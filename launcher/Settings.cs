@@ -6,14 +6,19 @@ using System.ComponentModel;
 
 namespace DiscodicXP.Launcher;
 
-public sealed record LauncherSettings(string Server = "", string AddOnsPath = "", string ProtectedKey = "")
+public sealed record LauncherSettings(string Server = LauncherSettings.DefaultServer, string AddOnsPath = "", string ProtectedKey = "", bool AutoSync = true, string CharacterPath = "")
 {
+    public const string DefaultServer = "https://153.76.170.60";
     public static string DataPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DiscodicXP", "Launcher");
     private static string SettingsPath => Path.Combine(DataPath, "settings.json");
 
-    public static LauncherSettings Load() => File.Exists(SettingsPath)
-        ? JsonSerializer.Deserialize<LauncherSettings>(File.ReadAllText(SettingsPath)) ?? new()
-        : new();
+    public static LauncherSettings Load()
+    {
+        var settings = File.Exists(SettingsPath)
+            ? JsonSerializer.Deserialize<LauncherSettings>(File.ReadAllText(SettingsPath)) ?? new()
+            : new();
+        return string.IsNullOrWhiteSpace(settings.Server) ? settings with { Server = DefaultServer } : settings;
+    }
 
     public void Save()
     {

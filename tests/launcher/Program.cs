@@ -12,11 +12,47 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (args is ["--launcher-live-check"])
+        {
+            using var client = new LauncherUpdateClient();
+            var release = client.Latest(default).GetAwaiter().GetResult();
+            Console.WriteLine($"Launcher server: {release.Version}, {release.Size} bytes, newer: {release.IsNewer}");
+            return;
+        }
+        if (args is ["--scan-characters", var addonsPath])
+        {
+            foreach (var character in ProgressFiles.Scan(addonsPath)) Console.WriteLine(character.Label);
+            return;
+        }
         var testRoot = Path.Combine(Path.GetTempPath(), "DiscodicXP-check-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(testRoot);
         var checks = 0;
         try
         {
+            if (args is ["--guide-server", var guideServer, var guideCredentials, var sourceAddon, var guideAddons])
+            {
+                GuideUpdateChecks.RunServer(guideServer, guideCredentials, sourceAddon, guideAddons, Check);
+                Console.WriteLine($"Guide integration checks passed: {checks}");
+                return;
+            }
+            if (args.Length > 0 && args[0] == "--self-update-checks")
+            {
+                LauncherUpdateChecks.Run(testRoot, Check, Throws, args.Length > 1 ? args[1] : null, args.Length > 2 ? args[2] : null);
+                Console.WriteLine($"Launcher update checks passed: {checks}");
+                return;
+            }
+            if (args is ["--preview-only", var previewPath])
+            {
+                RenderPreview(previewPath);
+                Console.WriteLine($"Launcher preview checks passed: {checks}");
+                return;
+            }
+            if (args is ["--scan-checks"])
+            {
+                ProgressChecks.RunDiscovery(testRoot, Check, Throws);
+                Console.WriteLine($"Character discovery checks passed: {checks}");
+                return;
+            }
             var addons = Path.Combine(testRoot, "WoW", "Interface", "AddOns");
             Directory.CreateDirectory(addons);
             var archive = Path.Combine(testRoot, "addon.zip");
@@ -54,37 +90,22 @@ internal static class Program
             var secret = "dxp_" + new string('x', 43);
             var protectedSecret = DeviceSecret.Protect(secret);
             Check(!protectedSecret.Contains(secret) && DeviceSecret.Unprotect(protectedSecret) == secret, "device key uses Windows encryption");
-            if (args.Length > 0)
+            ProgressChecks.Run(testRoot, Check, Throws);
+            GuideUpdateChecks.Run(testRoot, Check, Throws);
+            LauncherUpdateChecks.Run(testRoot, Check, Throws);
+            if (args.Length == 3 && args[0] == "--sync-server")
+            {
+                ProgressChecks.RunServer(testRoot, args[1], args[2], Check);
+                args = [];
+            }
+            if (args.Length > 0 && args[0] != "--preview")
             {
                 AddonInstaller.Extract(Path.GetFullPath(args[0]), Path.Combine(testRoot, "real-release"), "0.3.1");
                 Check(File.Exists(Path.Combine(testRoot, "real-release", "DiscodicXP", "DiscodicXP.toc")), "real GitHub package extracts");
             }
             if (args.Length > 1)
             {
-                var app = new App();
-                app.InitializeComponent();
-                var window = new MainWindow();
-                ((TextBox)window.FindName("ServerBox")).Text = "https://updates.example.com";
-                ((PasswordBox)window.FindName("DeviceKeyBox")).Password = "";
-                ((TextBox)window.FindName("AddOnsBox")).Text = @"E:\Games\WoW Forever\Interface\AddOns";
-                var content = (UIElement)window.Content;
-                window.Content = null;
-                var canvas = new Border { Background = window.Background, Child = content, Width = 660, Height = 650 };
-                canvas.SetValue(TextElement.ForegroundProperty, window.Foreground);
-                canvas.SetValue(TextElement.FontFamilyProperty, window.FontFamily);
-                canvas.SetValue(TextElement.FontSizeProperty, window.FontSize);
-                canvas.Measure(new Size(660, 650));
-                canvas.Arrange(new Rect(0, 0, 660, 650));
-                canvas.UpdateLayout();
-                var bitmap = new RenderTargetBitmap(660, 650, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(canvas);
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                using var image = File.Create(Path.GetFullPath(args[1]));
-                encoder.Save(image);
-                window.Close();
-                app.Shutdown();
-                Check(image.Length > 0, "WPF screen renders");
+                RenderPreview(args[1]);
             }
             Console.WriteLine($"Launcher checks passed: {checks}");
         }
@@ -94,6 +115,34 @@ internal static class Program
             if (Path.GetDirectoryName(Path.GetFullPath(testRoot)) != expectedParent || !Path.GetFileName(testRoot).StartsWith("DiscodicXP-check-"))
                 throw new InvalidOperationException("Unsafe test cleanup path.");
             Directory.Delete(testRoot, true);
+        }
+
+        void RenderPreview(string outputPath)
+        {
+            var app = new App();
+            app.InitializeComponent();
+            var window = new MainWindow { SaveOnClose = false };
+            ((TextBox)window.FindName("ServerBox")).Text = LauncherSettings.DefaultServer;
+            ((PasswordBox)window.FindName("DeviceKeyBox")).Password = "";
+            ((TextBox)window.FindName("AddOnsBox")).Text = @"E:\Games\WoW Forever\Interface\AddOns";
+            var content = (UIElement)window.Content;
+            window.Content = null;
+            var canvas = new Border { Background = window.Background, Child = content, Width = 700, Height = 1000 };
+            canvas.SetValue(TextElement.ForegroundProperty, window.Foreground);
+            canvas.SetValue(TextElement.FontFamilyProperty, window.FontFamily);
+            canvas.SetValue(TextElement.FontSizeProperty, window.FontSize);
+            canvas.Measure(new Size(700, 1000));
+            canvas.Arrange(new Rect(0, 0, 700, 1000));
+            canvas.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(700, 1000, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(canvas);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var image = File.Create(Path.GetFullPath(outputPath));
+            encoder.Save(image);
+            window.Close();
+            app.Shutdown();
+            Check(image.Length > 0, "WPF screen renders");
         }
 
         void Check(bool condition, string name)

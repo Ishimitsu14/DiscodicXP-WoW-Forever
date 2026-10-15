@@ -18,7 +18,7 @@ public static class AddonInstaller
         return fullPath;
     }
 
-    private static void RejectLinks(string path)
+    internal static void RejectLinks(string path)
     {
         for (DirectoryInfo? directory = new(path); directory is not null; directory = directory.Parent)
             if (directory.Exists && (directory.Attributes & FileAttributes.ReparsePoint) != 0)
@@ -108,6 +108,7 @@ public static class AddonInstaller
         try
         {
             CopyDirectory(preparedAddon, staging);
+            GuideFiles.Preserve(target, staging);
             if (GameIsRunning()) throw new InvalidOperationException("WoW запущен. Закрой игру и повтори установку.");
             if (Directory.Exists(target)) Directory.Move(target, backup);
             try { Directory.Move(staging, target); }

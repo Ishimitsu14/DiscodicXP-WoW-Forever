@@ -29,7 +29,7 @@ public sealed class UpdateClient : IDisposable
             Timeout = TimeSpan.FromMinutes(3)
         };
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", deviceKey);
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("DiscodicXP-Launcher/0.1.0");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherVersion.UserAgent);
     }
 
     private static void CheckResponse(HttpResponseMessage response)
