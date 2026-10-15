@@ -1,0 +1,21 @@
+DiscodicXP for WoW Forever, version 0.3.1
+
+This is a local derivative of RestedXP Guides v4.11.23 by RestedXP.
+The original engine is licensed under Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International.
+The complete upstream license is included as LICENSE in each build.
+Original project: https://github.com/RestedXP/RXPGuides
+License: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: separate addon namespace and saved variables, local guide
+preparation, account-independent runtime and cache, Russian UI defaults,
+Forever theme and commands, Forever-only load manifest, in-game guide
+import and transactional updates with account-independent decoding.
+
+Bundled third-party libraries retain their original license notices.
+The personal build includes a name-only extract of QuestieDB's Forever
+English/Russian entity data. Source: https://github.com/Questie/QuestieDB
+The exact source revision is recorded in build.json and NameKnowledge.lua.
+The purchased guide is separate content supplied locally by its owner.
+It is not covered by the engine license and must not be redistributed
+as part of a public project or public release archive.
