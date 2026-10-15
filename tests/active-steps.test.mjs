@@ -22,6 +22,25 @@ async function loadFunctions(vm, names) {
   }
 }
 
+async function loadElementMethods(vm) {
+  const source = await readFile(resolve(root, 'UI/V2/Core.lua'), 'utf8');
+  const ast = luaparse.parse(source, { ranges: true, luaVersion: '5.1' });
+  const register = ast.body.find(node => node.type === 'FunctionDeclaration' && node.identifier &&
+    functionName(node.identifier) === 'addon.ui.v2:RegisterDXPV2ActiveStepItem');
+  const methods = register.body.find(node => node.type === 'LocalStatement' &&
+    node.variables.some(variable => variable.name === 'methods')).init[0];
+  const setter = methods.fields.find(field => field.key.raw === '"SetElements"').value;
+  vm.run(`
+    local addon = addon
+    local function createElementRow() error("Unexpected row allocation") end
+    local function releaseElementRow(row)
+        addon.ReleaseActiveStepElement(row)
+        row.released = true
+    end
+    setElements = ${source.slice(...setter.range)}
+  `);
+}
+
 const environment = `
 local function container()
     return {
@@ -100,6 +119,72 @@ test('manual objective checkbox updates only that objective and refreshes progre
       checked = true
       addon.ActiveStepElementPostClick(button)
       assert(not objective.skip)
+    `);
+  } finally { vm.close(); }
+});
+
+test('objective callbacks defer recursive watcher updates until the next refresh', async () => {
+  const vm = createVM();
+  try {
+    vm.run(environment + `
+      tinsert = table.insert
+      table.wipe = function(t) for key in pairs(t) do t[key] = nil end end
+      addon.functions = {events = {collect = "BAG_UPDATE_DELAYED"}}
+      addon.Call = function(label, callback, ...) return callback(...) end
+      watcher = {elementRows = {}, activeElementRows = 0}
+      addon.v2.state.activeStepEventWatcher = watcher
+      for index = 1, 11 do
+          watcher.elementRows[index] = {
+              button = {Enable = function() end},
+              events = {},
+              RegisterEvent = function(self, event) self.events[event] = true end,
+              UnregisterAllEvents = function(self) self.events = {} end,
+              SetScript = function(self, event, callback) self[event] = callback end
+          }
+      end
+    `);
+    await loadElementMethods(vm);
+    await loadFunctions(vm, ['addon.ActiveStepElementEventHandler', 'addon.BindActiveStepElement', 'addon.ReleaseActiveStepElement',
+      'addon.v2:GetActiveStepsFrame', 'addon.v2:UpdateActiveStepEventWatchers', 'addon.v2:UpdateActiveStepsFrame']);
+    vm.run(`
+      watcher.SetElements = setElements
+      local step = {active = true, index = 104, elements = {}}
+      for index = 1, 11 do step.elements[index] = {tag = "collect", step = step} end
+      local calls = 0
+      local recursive = true
+      addon.functions.collect = function(row)
+          calls = calls + 1
+          if recursive then
+              recursive = false
+              row.element.text = "Collected item"
+              addon.v2:UpdateActiveStepsFrame({step})
+          end
+      end
+      addon.v2:UpdateActiveStepsFrame({step})
+      assert(calls == 11, "An objective was bound recursively")
+      assert(watcher.activeElementRows == 11)
+      assert(addon.updateStepText, "The recursive refresh was lost")
+      addon.updateStepText = false
+      addon.v2:UpdateActiveStepsFrame({step})
+      assert(watcher.activeElementRows == 10, "Visible objectives are still watched twice")
+      for index = 1, 10 do
+          local row = watcher.elementRows[index]
+          assert(row.element == step.elements[index + 1])
+          assert(row.events.BAG_UPDATE_DELAYED and row.OnEvent)
+      end
+      local released = watcher.elementRows[11]
+      assert(released.released and not released.element and not released.OnEvent)
+      assert(next(released.events) == nil)
+      addon.v2:UpdateActiveStepsFrame({})
+      assert(watcher.activeElementRows == 0)
+      for _, element in ipairs(step.elements) do assert(not element.frame) end
+      watcher.SetElements = function() error("Callback failed") end
+      local success, err = pcall(addon.v2.UpdateActiveStepsFrame, addon.v2, {step})
+      assert(not success and err:find("Callback failed", 1, true))
+      assert(not addon.v2.state.updatingActiveStepEventWatchers, "A failed callback blocked later refreshes")
+      watcher.SetElements = setElements
+      addon.v2:UpdateActiveStepsFrame({step})
+      assert(watcher.activeElementRows == 10)
     `);
   } finally { vm.close(); }
 });

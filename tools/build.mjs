@@ -129,7 +129,17 @@ end
     text = replaceOnce(text, `function addon.v2:UpdateActiveStepsFrame(steps, questId)
     if not addon.settings.profile.enableBetaFeatures then`,
     `function addon.v2:UpdateActiveStepsFrame(steps, questId)
+    if self.state.updatingActiveStepEventWatchers then
+        addon.updateStepText = true
+        return
+    end
+
     if not addon.settings.profile.enableBetaFeatures and not self:IsGuideWindowEnabled() then`, 'обработчики целей');
+    text = replaceOnce(text, '    watcher:SetElements(watcherStep, true)',
+      `    self.state.updatingActiveStepEventWatchers = true
+    local success, err = pcall(watcher.SetElements, watcher, watcherStep, true)
+    self.state.updatingActiveStepEventWatchers = nil
+    if not success then error(err, 0) end`, 'защиту от повторного обновления целей');
     text = replaceOnce(text, 'if payloadReady and addon.comms.grouping:CanBroadcastCurrentStep() then',
       'if addon.settings.profile.enableBetaFeatures and payloadReady and addon.comms.grouping:CanBroadcastCurrentStep() then',
       'условие групповой отправки');
@@ -316,7 +326,7 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
     const isCode = ['.lua', '.xml'].includes(extname(name).toLowerCase());
     await writeFile(destination, isCode ? patchSource(name, bytes.toString('utf8')) : bytes);
   }
-  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideCodec.lua', 'GuideImport.lua', 'ImportWindow.lua', 'NameResolver.lua', 'Commands.lua']) {
+  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideCodec.lua', 'GuideImport.lua', 'ImportWindow.lua', 'NameResolver.lua', 'SyncIdentity.lua', 'Commands.lua']) {
     await mkdir(resolve(output, 'Discodic'), { recursive: true });
     await writeFile(resolve(output, 'Discodic', name), await readFile(resolve(projectRoot, 'addon', name)));
   }
@@ -335,12 +345,12 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
   tocEntries.splice(tocEntries.indexOf('Themes.lua') + 1, 0, 'Discodic/ForeverTheme.lua');
   tocEntries.splice(tocEntries.indexOf('functions.lua') + 1, 0, 'Discodic/NameKnowledge.lua', 'Discodic/NameResolver.lua');
   tocEntries.push('Discodic/GuideCodec.lua', 'Discodic/ImportKey.lua', 'Discodic/GuideImport.lua',
-    'Discodic/ImportWindow.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/Commands.lua');
+    'Discodic/ImportWindow.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Commands.lua');
   const toc = `## Interface: 16001
 ## Title: DiscodicXP |cffe0bd7aForever|r
 ## Notes: Русский интерфейс прокачки WoW Forever. Локальные гайды без Battle.net.
 ## Author: DiscodicXP
-## Version: 0.3.1
+## Version: 0.4.1
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -353,7 +363,7 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', version: '0.3.1', interface: 16001,
+    addon: 'DiscodicXP', version: '0.4.1', interface: 16001,
     engine: 'RestedXP v4.11.23', guides: decoded.guides.length,
     sourceDigest: createHash('sha256').update(encodedGuide).digest('hex'),
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),

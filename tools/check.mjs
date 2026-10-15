@@ -16,10 +16,17 @@ export async function checkBuild(root = resolve('dist/DiscodicXP')) {
   }
   await walk(root);
   let luaFiles = 0;
+  let optionalBattleTagCapture = false;
   for (const file of files) {
     if (extname(file).toLowerCase() !== '.lua') continue;
     const code = await readFile(file, 'utf8');
     const ast = luaparse.parse(code, { luaVersion: '5.1' });
+    if (/\bBNGetInfo\b/.test(code)) {
+      if (relative(root, file).split(sep).join('/') !== 'Discodic/SyncIdentity.lua') {
+        throw new Error(`API аккаунта вне сбора метаданных в ${relative(root, file)}.`);
+      }
+      optionalBattleTagCapture = true;
+    }
     if (/\bBNGetInfo\s*\(|\bCheckBattleNet\s*\(|\baddon\.base\s*=|addon\.DeserializeTable\(addon\.base\)/.test(code)) {
       throw new Error(`Вызов аккаунта в ${relative(root, file)}.`);
     }
@@ -65,7 +72,8 @@ export async function checkBuild(root = resolve('dist/DiscodicXP')) {
     throw new Error('Число встроенных разделов отличается от манифеста.');
   }
   if (!toc.includes('## Interface: 16001')) throw new Error('Неверная версия клиента.');
-  return { luaFiles, manifestFiles: loaded.size, paidGuides: manifest.guides, accountCalls: 0 };
+  return { luaFiles, manifestFiles: loaded.size, paidGuides: manifest.guides,
+    accountBinding: manifest.runtimeAccountBinding, optionalBattleTagCapture };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
