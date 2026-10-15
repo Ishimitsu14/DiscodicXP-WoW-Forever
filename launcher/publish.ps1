@@ -24,4 +24,4 @@ $launcherVersion = $launcherFile.VersionInfo.ProductVersion.Split('+')[0]
 Write-Output "Готово: $($launcherFile.FullName)"
 Write-Output "Версия: $launcherVersion"
 Write-Output "SHA-256: $launcherHash"
-Write-Output "Публикация на сервере: bash /opt/discodicxp-update/server/publish-launcher.sh /absolute/launcher.exe $launcherHash $launcherVersion"
+Write-Output "Публикация: GitHub Release launcher-v$launcherVersion с --latest=false; доставку на сервер выполняет GitHub Actions."

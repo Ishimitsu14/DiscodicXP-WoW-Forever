@@ -1,0 +1,112 @@
+name: Launcher
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - launcher/**
+      - tests/launcher/**
+      - Directory.Build.props
+      - .github/**
+  pull_request:
+    branches: [main]
+    paths:
+      - launcher/**
+      - tests/launcher/**
+      - Directory.Build.props
+      - .github/**
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: launcher-${{ github.event_name == 'release' && 'production' || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'launcher-v') && !github.event.release.prerelease)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '9.0.x'
+      - name: Check release version
+        id: version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          [xml]$project = Get-Content launcher/DiscodicXP.Launcher.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          if ($version -notmatch '^\d{1,4}\.\d{1,4}\.\d{1,4}$') { throw 'Invalid launcher version.' }
+          if ($env:RELEASE_TAG -and $env:RELEASE_TAG -cne "launcher-v$version") { throw 'Release tag must match the launcher project version.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Build launcher
+        shell: pwsh
+        run: ./launcher/publish.ps1
+      - name: Check launcher
+        shell: pwsh
+        run: |
+          dotnet run --project tests/launcher/LauncherChecks.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/launcher/LauncherChecks.csproj -- --self-update-checks
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare checksum
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $exe = Get-Item dist/launcher-win-x64/DiscodicXP.Launcher.exe
+          if ($exe.VersionInfo.ProductVersion.Split('+')[0] -cne $env:EXPECTED_VERSION) { throw 'Executable version mismatch.' }
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText($exe.FullName + '.sha256', "$hash  DiscodicXP.Launcher.exe`n")
+      - uses: actions/upload-artifact@v7
+        with:
+          name: launcher-win-x64
+          path: |
+            dist/launcher-win-x64/DiscodicXP.Launcher.exe
+            dist/launcher-win-x64/DiscodicXP.Launcher.exe.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: launcher-win-x64
+          path: dist/launcher-win-x64
+      - name: Publish release assets and update server downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          LAUNCHER_VERSION: ${{ needs.build.outputs.version }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_ORIGIN: ${{ vars.DEPLOY_ORIGIN }}
+        run: bash .github/scripts/publish-launcher.sh
