@@ -233,6 +233,10 @@ local NPCNameTooltip = CreateFrame("GameTooltip", "RXPNPCNameTooltip", UIParent,
   if (path === 'Locale.lua') {
     text = replaceOnce(text, 'local locale = GetLocale()\n', 'local locale = "ruRU"\n', 'язык интерфейса');
   }
+  if (path === 'Themes.lua') {
+    text = text.replaceAll('font = _G.GameFontNormal:GetFont(),',
+      'font = "Interface/AddOns/" .. addonName .. "/Fonts/FiraSans-Regular.ttf",');
+  }
   return rebrand(text);
 }
 
@@ -319,6 +323,9 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
       }
     }
   }
+  for (const name of ['FiraSans-Regular.ttf', 'OFL.txt', 'README.md']) {
+    files.set(`Fonts/${name}`, await readFile(resolve(projectRoot, 'addon/Fonts', name)));
+  }
   await mkdir(output, { recursive: true });
   for (const [name, bytes] of files) {
     const destination = resolve(output, rebrand(name));
@@ -350,7 +357,7 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
 ## Title: DiscodicXP |cffe0bd7aForever|r
 ## Notes: Русский интерфейс прокачки WoW Forever. Локальные гайды без Battle.net.
 ## Author: DiscodicXP
-## Version: 0.4.1
+## Version: 0.4.2
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -363,7 +370,7 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', version: '0.4.1', interface: 16001,
+    addon: 'DiscodicXP', version: '0.4.2', interface: 16001,
     engine: 'RestedXP v4.11.23', guides: decoded.guides.length,
     sourceDigest: createHash('sha256').update(encodedGuide).digest('hex'),
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),
