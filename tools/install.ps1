@@ -33,4 +33,4 @@ if (Test-Path -LiteralPath $target) {
     Copy-Item -LiteralPath $buildRoot -Destination $target -Recurse
 }
 Write-Output "Установлено: $target"
-Write-Output 'В списке модификаций включите DiscodicXP и отключите RestedXP Guides. Команда: /dxp'
+Write-Output 'В списке модификаций включите DiscordikXP и отключите RestedXP Guides. Команда: /dxp'

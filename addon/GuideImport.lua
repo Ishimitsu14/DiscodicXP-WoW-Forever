@@ -1,4 +1,5 @@
 local _, addon = ...
+local L = addon.locale.Get
 local LibDeflate = LibStub("LibDeflate")
 
 addon.localGuideImport = {}
@@ -27,30 +28,30 @@ function importer:Prepare(sources, yieldImport)
         addon.error = function(message) error(message, 0) end
         local ok, guide, parseError, metadata = pcall(addon.ParseGuide, source)
         for _, key in ipairs(parsingFields) do addon[key] = saved[key] end
-        if not ok then error("Ошибка разбора раздела " .. index .. ": " .. tostring(guide), 0) end
+        if not ok then error(L("Error parsing section ") .. index .. ": " .. tostring(guide), 0) end
         if not guide or not guide.name or not guide.group or parseError == "#0" then
-            error("Раздел " .. index .. " не подходит для WoW Forever или содержит ошибку.", 0)
+            error(L("Section ") .. index .. L(" is incompatible with WoW Forever or contains an error."), 0)
         end
         if parseError and addon.applies(guide.enabledFor) then error(tostring(parseError), 0) end
         guide.name = guide.name:gsub("^(%d)-(%d%d?)", addon.affix)
         guide.key = guide.key or addon.BuildGuideKey(guide)
-        if seen[guide.key] then error("В файле повторяется раздел: " .. guide.name, 0) end
+        if seen[guide.key] then error(L("Duplicate section in file: ") .. guide.name, 0) end
         seen[guide.key] = true
         guide.imported = true
         local compressed = LibDeflate:CompressDeflate(source)
-        if not compressed then error("Не удалось сохранить раздел: " .. guide.name, 0) end
+        if not compressed then error(L("Could not save section: ") .. guide.name, 0) end
         entries[#entries + 1] = {
             guide = guide, applicable = not parseError,
             cache = addon.BuildCacheObject(compressed, guide.enabledFor, guide.version, metadata, guide.key)
         }
-        if yieldImport then yieldImport("Проверка разделов: " .. index .. "/" .. #sources) end
+        if yieldImport then yieldImport(L("Checking sections: ") .. index .. "/" .. #sources) end
     end
-    if #entries == 0 then error("В файле нет маршрутов.", 0) end
+    if #entries == 0 then error(L("The file contains no guides."), 0) end
     return entries
 end
 
 function importer:Commit(entries)
-    if InCombatLockdown() then error("Завершите бой и повторите импорт.", 0) end
+    if InCombatLockdown() then error(L("Finish combat and try importing again."), 0) end
     local keys, changed, skipped = {}, {}, 0
     for _, entry in ipairs(entries) do
         local guide = entry.guide
@@ -88,7 +89,7 @@ function importer:Commit(entries)
     local ok, failure = pcall(function()
         for _, entry in ipairs(changed) do
             addon.guideCache[entry.guide.key] = nil
-            if entry.applicable then assert(addon.AddGuide(entry.guide), "Не удалось добавить маршрут.") end
+            if entry.applicable then assert(addon.AddGuide(entry.guide), L("Could not add guide.")) end
         end
     end)
     if not ok then
@@ -106,8 +107,8 @@ function importer:Cancel()
 end
 
 function importer:Start(text, fileName, callback)
-    if self.job then return false, "Импорт уже выполняется." end
-    if InCombatLockdown() then return false, "Импорт доступен после боя." end
+    if self.job then return false, L("An import is already in progress.") end
+    if InCombatLockdown() then return false, L("Import is available after combat.") end
     local key = DXPData.guideImportKey or addon.defaultGuideImportKey
     if fileName and fileName:match("%S") then
         local message
@@ -134,7 +135,7 @@ function importer:Start(text, fileName, callback)
             if not committed then callback(false, tostring(updated)); return end
             if key then DXPData.guideImportKey = key end
             addon:ScheduleTask(addon.DXPFrame.GenerateMenuTable)
-            callback(true, "Готово. Разделов добавлено или обновлено: " .. updated .. ". Более старых пропущено: " .. skipped .. ".")
+            callback(true, L("Done. Sections added or updated: ") .. updated .. L(". Older sections skipped: ") .. skipped .. ".")
             local current = addon.currentGuide
             if current then
                 local replacement = addon.guides[current.group .. "||" .. current.name]

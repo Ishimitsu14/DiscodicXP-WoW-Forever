@@ -149,8 +149,8 @@ test('show and hide commands are idempotent and Russian aliases work', { skip: !
   } finally { vm.close(); }
 });
 
-test('Russian UI loads with both Russian and English game locales', { skip: !ready }, async () => {
-  for (const locale of ['ruRU', 'enUS']) {
+test('UI follows the client language and unknown locales fall back to English', { skip: !ready }, async () => {
+  for (const locale of ['ruRU', 'enUS', 'enGB', 'deDE', 'frFR', 'itIT']) {
     const vm = createVM();
     try {
       vm.run(`
@@ -158,18 +158,43 @@ test('Russian UI loads with both Russian and English game locales', { skip: !rea
         function geterrorhandler() return error end
         format = string.format
         addon = {}
+        unpack = table.unpack
+        strjoin = function(delimiter, ...) return table.concat({...}, delimiter) end
+        strsplittable = function(delimiter, text)
+            local result = {}
+            for word in text:gmatch("[^" .. delimiter .. "]+") do result[#result + 1] = word end
+            return result
+        end
       `);
       await vm.file(resolve(root, 'libs/LibStub/LibStub.lua'), false);
       await vm.file(resolve(root, 'libs/AceLocale-3.0/AceLocale-3.0.lua'), false);
+      vm.run('local ace = LibStub:NewLibrary("AceAddon-3.0", 1); ace.NewAddon = function(self, addon) return addon end');
       await vm.file(resolve(root, 'locale/enUS.lua'));
-      await vm.file(resolve(root, 'locale/ruRU.lua'));
+      for (const language of ['esES', 'frFR', 'zhCN', 'zhTW', 'deDE', 'koKR', 'ruRU']) {
+        await vm.file(resolve(root, `locale/${language}.lua`));
+      }
+      await vm.file(resolve(root, 'Locale.lua'));
       await vm.file(resolve(root, 'Discodic/Language.lua'));
       vm.run(`
         local L = LibStub("AceLocale-3.0"):GetLocale("DiscodicXP")
-        assert(L["Browse Guides"] == "Выбрать маршрут")
-        assert(L["Open Settings"] == "Настройки")
-        assert(L["Import guide"] == "Подготовленный гайд")
-        assert(addon.LocalizeGuideName("22-24 Hillsbrad") == "22-24 Хилсбрад")
+        local russian = GetLocale() == "ruRU"
+        assert(addon.displayName == "DiscordikXP")
+        assert(addon.locale.Get("DiscodicXP") == "DiscordikXP")
+        assert(addon.LocalizeGuideName("22-24 Hillsbrad") == (russian and "22-24 Хилсбрад" or "22-24 Hillsbrad"))
+        assert(addon.LocalizeGuideName("DiscodicXP Forever Guide") == "DiscordikXP Forever Guide")
+        assert(addon.locale.Get("DiscordikXP · Import guides") == (russian and "DiscordikXP · Импорт маршрутов" or "DiscordikXP · Import guides"))
+        assert(addon.locale.Get("Finish combat and try importing again.") == (russian and "Завершите бой и повторите импорт." or "Finish combat and try importing again."))
+        assert(addon.locale.Get("Hide NPC Selection window") == (russian and "Скрыть окно выбора НПС" or "Hide NPC Selection window"))
+        if russian then
+            assert(L["Browse Guides"] == "Выбрать маршрут")
+            assert(addon.locale.Get("Active Targets") == "Выбор NPC")
+        elseif GetLocale() == "enUS" or GetLocale() == "enGB" or GetLocale() == "itIT" then
+            assert(addon.locale.Get("Browse Guides") == "Browse Guides")
+            assert(addon.locale.Get("Active Targets") == "NPC Selection")
+        else
+            assert(addon.locale.Get("Compare Next Level") == L["Compare Next Level"])
+            assert(addon.locale.Get("Compare Next Level") ~= "Compare Next Level")
+        end
       `);
     } finally { vm.close(); }
   }
