@@ -1,4 +1,5 @@
 local _, addon = ...
+local L = addon.locale.Get
 local AceGUI = LibStub("AceGUI-3.0")
 local importer = addon.localGuideImport
 
@@ -7,7 +8,7 @@ local function setBusy(window, busy)
     window.importButton:SetEnabled(not busy and addon.guideImporter.importCache.bufferString ~= "")
     if busy then window.fileName:Disable() else window.fileName:Enable() end
     if busy then window.editBox:Disable() else window.editBox:Enable() end
-    window.cancelButton:SetText(busy and "Отменить импорт" or "Закрыть")
+    window.cancelButton:SetText(busy and L("Cancel import") or L("Close"))
 end
 
 local function updateTheme(window)
@@ -20,6 +21,9 @@ local function updateTheme(window)
     window.title:SetFont(theme.font, 16, "")
     window.title:SetTextColor(unpack(theme.textColor.title))
     window.editBox:SetFont(theme.font, 11, "")
+    window.fileName:SetFont(theme.font, 11, "")
+    window.importButton:GetFontString():SetFont(theme.font, 12, "")
+    window.cancelButton:GetFontString():SetFont(theme.font, 12, "")
     window.editBox:SetTextColor(unpack(theme.textColor.common))
     addon.ui.v2:ApplyFrameBackdrop(window.input.background, theme.edge,
         theme.backgroundColors.scrollbar, theme.borderColors.commonEdge)
@@ -50,9 +54,9 @@ function importer:CreateWindow()
         window.labels[#window.labels + 1] = font
         return font
     end
-    window.title = label("DiscodicXP · Импорт маршрутов", -18, 25)
-    label("Откройте .txt, скопируйте весь текст и вставьте его в поле ниже.\nСовпадающие разделы будут обновлены с сохранением прогресса.", -53, 34)
-    label("Имя исходного файла (необязательно)", -98, 20)
+    window.title = label(L("DiscordikXP · Import guides"), -18, 25)
+    label(L("Open the .txt file, copy all text and paste it below.\nMatching sections will be updated, keeping your progress."), -53, 34)
+    label(L("Original file name (optional)"), -98, 20)
     local fileName = CreateFrame("EditBox", nil, window, "InputBoxTemplate")
     fileName:SetPoint("TOPLEFT", 25, -122)
     fileName:SetSize(510, 26)
@@ -61,7 +65,7 @@ function importer:CreateWindow()
     fileName:SetScript("OnEscapePressed", function(this) this:ClearFocus() end)
     window.fileName = fileName
 
-    label("Содержимое файла .txt — нажмите на поле и вставьте текст через Ctrl+V", -163, 22)
+    label(L(".txt contents — click the field and paste with Ctrl+V"), -163, 22)
     local input = AceGUI:Create("DXPV2GuideImporterEditBox")
     input.frame:SetParent(window)
     input:SetLabel(nil)
@@ -74,23 +78,23 @@ function importer:CreateWindow()
     input.label:Hide()
     window.input = input
     window.editBox = input:GetEditBox()
-    window.status = label("Для обновлений текущего гайда имя файла не нужно.\nНовые разделы появятся в меню /dxp guides.", -322, 49)
+    window.status = label(L("The file name is not needed to update the current guide.\nNew sections will appear in /dxp guides."), -322, 49)
 
     local importButton = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
     importButton:SetPoint("BOTTOMLEFT", 20, 20)
     importButton:SetSize(250, 28)
-    importButton:SetText("Импортировать / обновить")
+    importButton:SetText(L("Import / update"))
     window.importButton = importButton
     local cancel = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
     cancel:SetPoint("BOTTOMRIGHT", -20, 20)
     cancel:SetSize(250, 28)
-    cancel:SetText("Закрыть")
+    cancel:SetText(L("Close"))
     window.cancelButton = cancel
     cancel:SetScript("OnClick", function()
         if window.busy then
             self:Cancel()
             setBusy(window, false)
-            window.status:SetText("Импорт отменён. Существующие маршруты сохранены.")
+            window.status:SetText(L("Import cancelled. Existing guides were kept."))
         else
             window:Hide()
         end
@@ -100,14 +104,14 @@ function importer:CreateWindow()
     close:SetScript("OnClick", function() window:Hide() end)
     input:SetCallback("OnEditFocusGained", function()
         importButton:Disable()
-        window.status:SetText("Вставьте весь текст файла через Ctrl+V.")
+        window.status:SetText(L("Paste the entire file with Ctrl+V."))
     end)
     input:SetCallback("OnEditFocusLost", function()
         local buffer = addon.guideImporter.importCache
         if #buffer.bufferData > 0 and buffer.lastBuffer ~= 0 then addon.guideImporter:ProcessBuffer(window.editBox) end
         importButton:SetEnabled(not window.busy and buffer.bufferString ~= "")
         if buffer.bufferString ~= "" then
-            window.status:SetText("Получено символов: " .. #buffer.bufferString .. ". Можно импортировать.")
+            window.status:SetText(L("Characters received: ") .. #buffer.bufferString .. L(". Ready to import."))
         end
     end)
     importButton:SetScript("OnClick", function()
@@ -117,7 +121,7 @@ function importer:CreateWindow()
         fileName:ClearFocus()
         setBusy(window, true)
         local started, message = self:Start(buffer.bufferString, fileName:GetText(), function(success, status)
-            window.status:SetText(status or "Обработка…")
+            window.status:SetText(status or L("Processing…"))
             if success ~= nil then
                 if success then
                     buffer.bufferString, buffer.bufferData = "", {}
@@ -146,7 +150,7 @@ end
 
 function addon.guideImporter:Open()
     if InCombatLockdown() then
-        addon.comms.PrettyPrint("Импорт доступен после боя.")
+        addon.comms.PrettyPrint(L("Import is available after combat."))
         return
     end
     local window = importer.window or importer:CreateWindow()

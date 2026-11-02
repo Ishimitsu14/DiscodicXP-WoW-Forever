@@ -211,7 +211,7 @@ test('async import can be cancelled and blocks committing after combat starts', 
       assert(import:Start(input, "", function(ok, status) if ok ~= nil then done, message = ok, status end end))
       combat = true
       while import.job do import.worker.scripts.OnUpdate() end
-      assert(done == false and message:find("бой"))
+      assert(done == false and message:find("combat"))
       assert(next(addon.db.profile.guides) == nil)
       combat = false
       assert(import:Start(input, "", function(ok) if ok ~= nil then done = ok end end))
@@ -235,6 +235,7 @@ test('import window opens, imports pasted content and clears input after success
       methods.SetScript = function(self, name, callback) self.scripts[name] = callback end
       methods.SetFont = function(self, font) self.font = font end
       methods.SetFontObject = methods.SetFont
+      methods.GetFontString = function(self) return self end
       methods.SetParent = function(self, parent) self.parent = parent end
       methods.SetText = function(self, text)
           if self.kind == "FontString" then assert(self.font, "FontString:SetText(): Font not set") end
@@ -314,7 +315,10 @@ test('import window opens, imports pasted content and clears input after success
       window.fileName:SetText("Demo!example#12345.txt")
       window.importButton.scripts.OnClick()
       while addon.localGuideImport.job do addon.localGuideImport.worker.scripts.OnUpdate() end
-      assert(window.status.text:find("Готово"))
+      assert(window.status.text:find("Done"))
+      assert(window.fileName.font == "GameFont")
+      assert(window.importButton.font == "GameFont" and window.cancelButton.font == "GameFont")
+      assert(window.title.text == "DiscordikXP · Import guides")
       assert(not window.busy and not window.importButton.enabled)
       assert(window.fileName:GetText() == "" and addon.guideImporter.importCache.bufferString == "")
       assert(next(addon.db.profile.guides))

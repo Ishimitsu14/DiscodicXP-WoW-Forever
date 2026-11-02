@@ -2,8 +2,8 @@ local addonName, addon = ...
 
 local theme = CopyTable(addon.themes["DXP Blue"])
 theme.name = "Forever"
-theme.displayName = "Forever — Азерот"
-theme.author = "DiscodicXP"
+theme.displayName = addon.locale.Get("Forever — Azeroth")
+theme.author = "DiscordikXP"
 theme.background = {0.075, 0.065, 0.055, 0.97}
 theme.bottomFrameBG = {0.11, 0.085, 0.065, 1}
 theme.bottomFrameHighlight = {0.55, 0.35, 0.15, 1}

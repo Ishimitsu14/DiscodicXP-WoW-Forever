@@ -31,7 +31,7 @@ export function patchSource(path, source) {
     if (start < 0 || end < start) throw new Error('Не найдена граница импортера.');
     text = text.slice(0, start) + `local function CheckDataIntegrity(str, checksum)
     if not checksum then return addon.A32(str) end
-    return false, "Подготовьте зашифрованный гайд локальным сборщиком DiscodicXP."
+    return false, addon.locale.Get("Prepare encrypted guides with the DiscordikXP local builder.")
 end
 
 ` + text.slice(end);
@@ -71,6 +71,7 @@ end
     text = replaceOnce(text, 'addon.base = {66,78,71,101,116,73,110,102,111}', '', 'обфусцированное имя API');
   }
   if (path === 'Communications.lua') {
+    text = replaceOnce(text, 'f:SetTitle("RestedXP: " .. title)', 'f:SetTitle("DiscordikXP: " .. title)', 'название окна сообщений');
     text = replaceOnce(text, `    -- Update Feedback Report into GuideWindow context menu, load order workaround
     for i, m in ipairs(addon.RXPFrame.bottomMenu) do
         if m.text == L("Give Feedback for step") then
@@ -86,6 +87,16 @@ end
     text = text.slice(0, start) + text.slice(end);
   }
   if (path === 'SettingsPanel.lua') {
+    text = replaceOnce(text, '        label = addonName,', '        label = "DiscordikXP",', 'название на миникарте');
+    text = replaceOnce(text, `                        order = 3.10,
+                        set = function(info, value)
+                            SetProfileOption(info, value)
+                            if addon.targeting.activeTargetFrame and
+                                not InCombatLockdown() then
+                                addon.targeting.activeTargetFrame:Hide()
+                            end`, `                        order = 3.10,
+                        set = function(info, value)
+                            addon.SetNpcWindowEnabled(value)`, 'переключатель окна NPC');
     text = replaceOnce(text, "activeTheme = 'RXP Blue',", "activeTheme = 'Forever',", 'тему');
     text = replaceOnce(text, 'enableV2Interface = false,', 'enableV2Interface = true,', 'интерфейс');
     text = replaceOnce(text, 'guideFontSize = 9,', 'guideFontSize = 11,', 'размер текста');
@@ -103,6 +114,17 @@ end
     const resetStart = text.indexOf('            resetGuideProgressTop = {\n', feedbackStart);
     if (feedbackStart < 0 || resetStart < feedbackStart) throw new Error('Не найдены кнопки обратной связи и конфигуратора.');
     text = text.slice(0, feedbackStart) + text.slice(resetStart);
+    text = replaceOnce(text, '                    enableVendorTreasure = {\n', `                    hideNpcWindow = {
+                        order = 2.41,
+                        name = L("Hide NPC Selection window"),
+                        desc = L("Hide NPC target buttons without hiding the guide."),
+                        type = "toggle",
+                        width = optionsWidth,
+                        get = function() return not self.profile.enableTargetFrame end,
+                        set = function(_, value) addon.SetNpcWindowEnabled(not value) end
+                    },
+                    enableVendorTreasure = {
+`, 'отключение окна NPC рядом с окном предметов');
     text = replaceOnce(text, `    -- Theme load order, leave default settings branding unthemed
     f.icon:SetTexture("Interface/AddOns/" .. addonName ..
                           "/Textures/rxp_logo-64")`,
@@ -224,14 +246,26 @@ local NPCNameTooltip = CreateFrame("GameTooltip", "RXPNPCNameTooltip", UIParent,
     if addon.names then return addon.names:ResolveTargets(element) end
 `, 'повторный поиск имён без ожидания события');
   }
-  if (path === 'locale/ruRU.lua') {
-    text = replaceOnce(text, 'NewLocale(addonName, "ruRU", false)', 'NewLocale(addonName, "ruRU", true)', 'русский язык по умолчанию');
-  }
-  if (path === 'locale/locales.xml') {
-    text = '<Ui xmlns="http://www.blizzard.com/wow/ui/">\n    <Script file="enUS.lua"/>\n    <Script file="ruRU.lua"/>\n    <Script file="NPCnames.lua"/>\n</Ui>\n';
-  }
   if (path === 'Locale.lua') {
-    text = replaceOnce(text, 'local locale = GetLocale()\n', 'local locale = "ruRU"\n', 'язык интерфейса');
+    const start = text.indexOf('-- TODO check if L returned language, remove explicit list\n');
+    const end = text.indexOf('\nfunction addon.locale.AddGenericTranslation(', start);
+    if (start < 0 || end < start) throw new Error('Не найден выбор языка интерфейса.');
+    text = text.slice(0, start) + `-- AceLocale selects the client language, falling back to English.
+-- Only display text is branded; guide keys and SavedVariables keep their identity.
+addon.locale.Get = function(text)
+    local translated = getForeign(text)
+    if type(translated) == "string" then return (translated:gsub("DiscodicXP", "DiscordikXP")) end
+    return translated
+end
+` + text.slice(end);
+  }
+  if (path === 'Targeting.lua') {
+    text = replaceOnce(text, `function addon.targeting:UpdateTargetFrame(selector)
+    if not addon.settings.profile.enableTargetFrame then return end`, `function addon.targeting:UpdateTargetFrame(selector)
+    if not addon.settings.profile.enableTargetFrame then
+        if self.activeTargetFrame and not InCombatLockdown() then self.activeTargetFrame:Hide() end
+        return
+    end`, 'скрытие отключённого окна NPC после боя');
   }
   if (path === 'Themes.lua') {
     text = text.replaceAll('font = _G.GameFontNormal:GetFont(),',
@@ -297,9 +331,7 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
     const bytes = await readFile(path);
     files.set(name, bytes);
     if (extname(name).toLowerCase() === '.xml') {
-      const xml = (name === 'locale/locales.xml'
-        ? '<Script file="enUS.lua"/><Script file="ruRU.lua"/><Script file="NPCnames.lua"/>'
-        : bytes.toString('utf8')).replace(/<!--[\s\S]*?-->/g, '');
+      const xml = bytes.toString('utf8').replace(/<!--[\s\S]*?-->/g, '');
       for (const match of xml.matchAll(/<(?:Script|Include)\s+file=["']([^"']+)["']/g)) {
         await collect(match[1].replaceAll('\\', '/'), name);
       }
@@ -333,7 +365,7 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
     const isCode = ['.lua', '.xml'].includes(extname(name).toLowerCase());
     await writeFile(destination, isCode ? patchSource(name, bytes.toString('utf8')) : bytes);
   }
-  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideCodec.lua', 'GuideImport.lua', 'ImportWindow.lua', 'NameResolver.lua', 'SyncIdentity.lua', 'Commands.lua']) {
+  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideCodec.lua', 'GuideImport.lua', 'ImportWindow.lua', 'NameResolver.lua', 'SyncIdentity.lua', 'Preferences.lua', 'Commands.lua']) {
     await mkdir(resolve(output, 'Discodic'), { recursive: true });
     await writeFile(resolve(output, 'Discodic', name), await readFile(resolve(projectRoot, 'addon', name)));
   }
@@ -352,12 +384,13 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
   tocEntries.splice(tocEntries.indexOf('Themes.lua') + 1, 0, 'Discodic/ForeverTheme.lua');
   tocEntries.splice(tocEntries.indexOf('functions.lua') + 1, 0, 'Discodic/NameKnowledge.lua', 'Discodic/NameResolver.lua');
   tocEntries.push('Discodic/GuideCodec.lua', 'Discodic/ImportKey.lua', 'Discodic/GuideImport.lua',
-    'Discodic/ImportWindow.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Commands.lua');
+    'Discodic/ImportWindow.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
   const toc = `## Interface: 16001
-## Title: DiscodicXP |cffe0bd7aForever|r
-## Notes: Русский интерфейс прокачки WoW Forever. Локальные гайды без Battle.net.
-## Author: DiscodicXP
-## Version: 0.4.2
+## Title: DiscordikXP |cffe0bd7aForever|r
+## Notes: WoW Forever leveling guides. Interface follows the client language.
+## Notes-ruRU: Маршруты прокачки WoW Forever. Интерфейс под язык клиента.
+## Author: DiscordikXP
+## Version: 0.4.4
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -370,7 +403,7 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', version: '0.4.2', interface: 16001,
+    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.4.4', interface: 16001,
     engine: 'RestedXP v4.11.23', guides: decoded.guides.length,
     sourceDigest: createHash('sha256').update(encodedGuide).digest('hex'),
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),

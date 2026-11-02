@@ -1,4 +1,5 @@
 local _, addon = ...
+local L = addon.locale.Get
 local LibDeflate = LibStub("LibDeflate")
 local byte, char = string.byte, string.char
 local band, bxor = bit.band, bit.bxor
@@ -17,7 +18,7 @@ end
 function codec.KeyFromFileName(fileName)
     local identity = fileName:match("!([^!]+#%d+)%.txt[\"']?%s*$")
     if not identity or identity:find("[\128-\255]") then
-        return nil, "Укажите полное исходное имя .txt, включая часть после !."
+        return nil, L("Enter the full original .txt file name, including the part after !.")
     end
     local text = identity:lower():sub(-16)
     local key = {}
@@ -31,7 +32,7 @@ end
 
 local function decrypt(content, key, yieldImport)
     if #content % 4 ~= 0 or not content:match("^[A-Za-z0-9+/]*=?=?$") then
-        error("Повреждённый формат строки гайда.", 0)
+        error(L("Invalid guide string format."), 0)
     end
     local decoded, decodeError
     if C_EncodingUtil and C_EncodingUtil.DecodeBase64 then
@@ -41,7 +42,7 @@ local function decrypt(content, key, yieldImport)
     else
         decoded, decodeError = addon.read(content)
     end
-    if not decoded or decodeError then error("Не удалось прочитать строку гайда.", 0) end
+    if not decoded or decodeError then error(L("Could not read the guide string."), 0) end
     local state, j = {}, 0
     for i = 0, 255 do state[i] = i end
     for i = 0, 255 do
@@ -59,21 +60,21 @@ local function decrypt(content, key, yieldImport)
             buffer[#buffer + 1] = char(bxor(byte(decoded, index), state[band(state[i] + state[j], 255)]))
         end
         chunks[#chunks + 1] = table.concat(buffer)
-        if yieldImport then yieldImport("Расшифровка…") end
+        if yieldImport then yieldImport(L("Decrypting…")) end
     end
     return table.concat(chunks)
 end
 
 function codec.Decode(text, key, yieldImport)
-    if type(text) ~= "string" or #text == 0 then error("Вставьте содержимое файла гайда.", 0) end
-    if #text > codec.maxInputBytes then error("Файл превышает допустимый размер 8 МБ.", 0) end
+    if type(text) ~= "string" or #text == 0 then error(L("Paste the contents of the guide file."), 0) end
+    if #text > codec.maxInputBytes then error(L("The file exceeds the 8 MB limit."), 0) end
     text = text:gsub("^\239\187\191", ""):match("^%s*(.-)%s*$")
     local guides, totalBytes = {}, 0
     local function append(source)
         totalBytes = totalBytes + #source
-        if totalBytes > codec.maxGuideBytes then error("Распакованный гайд превышает 16 МБ.", 0) end
+        if totalBytes > codec.maxGuideBytes then error(L("The unpacked guide exceeds 16 MB."), 0) end
         if not source:match("#group%s+[^\r\n]+") or not source:match("#name%s+[^\r\n]+") then
-            error("В файле найден раздел без группы или имени.", 0)
+            error(L("The file contains a section without a group or name."), 0)
         end
         guides[#guides + 1] = codec.Rebrand(source)
     end
@@ -83,13 +84,13 @@ function codec.Decode(text, key, yieldImport)
     end
     text = text:gsub("%s", "")
     local count, body, version = text:match("^(%d+)|(.+)%%|(%d+)$")
-    if not count or tonumber(version) ~= addon.version then error("Неполный или несовместимый файл гайда.", 0) end
-    if not key or #key ~= 16 then error("Укажите имя исходного файла для расшифровки.", 0) end
+    if not count or tonumber(version) ~= addon.version then error(L("Incomplete or incompatible guide file."), 0) end
+    if not key or #key ~= 16 then error(L("Enter the original file name to decrypt the guide."), 0) end
     body = body .. "%"
     local offset = 1
     while offset <= #body do
         local first, last, checksum, content = body:find("(%-?%d+):([A-Za-z0-9+/=]+)%%", offset)
-        if first ~= offset then error("Повреждённый блок в файле гайда.", 0) end
+        if first ~= offset then error(L("Damaged block in the guide file."), 0) end
         local compressed = decrypt(content, key, yieldImport)
         checksum = tonumber(checksum) % 4294967296
         local length = #compressed
@@ -98,9 +99,9 @@ function codec.Decode(text, key, yieldImport)
             + byte(compressed, length - 2) * 65536 + byte(compressed, length - 1) * 256 + byte(compressed, length)
         if not trailer or band(cmf, 15) ~= 8 or cmf > 120 or band(flg, 32) ~= 0
             or (cmf * 256 + flg) % 31 ~= 0 or trailer ~= checksum then
-            error("Не удалось раскрыть гайд. Проверьте полноту текста и исходное имя файла.", 0)
+            error(L("Could not decode the guide. Check the full text and original file name."), 0)
         end
-        if yieldImport then yieldImport("Распаковка…") end
+        if yieldImport then yieldImport(L("Unpacking…")) end
         local plain
         if C_EncodingUtil and C_EncodingUtil.DecompressString then
             local ok
@@ -110,11 +111,11 @@ function codec.Decode(text, key, yieldImport)
             plain = LibDeflate:DecompressZlib(compressed)
         end
         if not plain or #plain > codec.maxGuideBytes or addon.A32(plain) % 4294967296 ~= checksum then
-            error("Данные гайда повреждены: контрольная сумма не совпала.", 0)
+            error(L("Guide data is damaged: checksum mismatch."), 0)
         end
         for source in plain:gmatch("[^%z]+") do append(source) end
         offset = last + 1
     end
-    if #guides ~= tonumber(count) then error("Вставлен не весь файл: число разделов не совпало.", 0) end
+    if #guides ~= tonumber(count) then error(L("The pasted file is incomplete: section count mismatch."), 0) end
     return guides
 end
