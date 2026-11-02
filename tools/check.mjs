@@ -68,8 +68,11 @@ export async function checkBuild(root = resolve('dist/DiscodicXP')) {
   }
   const manifest = JSON.parse(await readFile(resolve(root, 'build.json'), 'utf8'));
   const guides = await readFile(resolve(root, 'UserGuides/ForeverHorde.lua'), 'utf8');
-  if ([...guides.matchAll(/addon\.DiscodicXP\.RegisterGuide\(/g)].length !== manifest.guides) {
-    throw new Error('Число встроенных разделов отличается от манифеста.');
+  if (manifest.guides !== 0 || manifest.guideUpdates !== 1 || /RegisterGuide\s*\(|^#(?:group|name)\s/m.test(guides)) {
+    throw new Error('Публичная сборка должна содержать только пустой файл для серверных гайдов.');
+  }
+  if (existsSync(resolve(root, 'Discodic/ImportKey.lua')) || files.some(file => /Guides[\\/](?:forever|SurvivalGuide)[\\/]/.test(file))) {
+    throw new Error('В публичную сборку попали локальные гайды или ключ импорта.');
   }
   if (!toc.includes('## Interface: 16001')) throw new Error('Неверная версия клиента.');
   return { luaFiles, manifestFiles: loaded.size, paidGuides: manifest.guides,

@@ -51,6 +51,11 @@ Variables `DEPLOY_PORT` и `DEPLOY_ORIGIN` необязательны; по ум
    [манифест](https://153.76.170.60/downloads/launcher/latest.json).
 
 Архивы аддона по-прежнему публикуются под тегами `v<версия>` и помечаются `Latest`.
+Для публичного релиза архив собирается без файла гайдов: `node tools/build.mjs
+--source <RXPGuides> --output <новая папка>/DiscodicXP`, затем проверяется
+`node tools/check.mjs <новая папка>/DiscodicXP`. Имя ZIP сохраняется
+`DiscodicXP-<версия>-personal.zip` для совместимости с сервисом обновлений;
+маршрутов и ключа импорта внутри нет. Маршруты публикуются только в админке.
 Сервер берёт аддон через GitHub `releases/latest`, поэтому релиз лаунчера обязательно
 создаётся с `--latest=false`. Workflow не публикует prerelease и проверяет, что
 релиз лаунчера не занял канал `Latest` аддона.

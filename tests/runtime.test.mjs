@@ -55,11 +55,11 @@ DXPCData = {guideDisabled = {}, guideMetaData = {}}
 
 test('Lua 5.1 syntax, load graph and namespaces are valid', { skip: !ready }, async () => {
   const checked = await checkBuild(root);
-  assert.equal(checked.paidGuides, 33);
+  assert.equal(checked.paidGuides, 0);
   assert.ok(checked.luaFiles > 50);
 });
 
-test('paid guides register without BNGetInfo, cache or any account API', { skip: !ready }, async () => {
+test('fresh addon has no bundled guides or account-bound import key', { skip: !ready }, async () => {
   const vm = createVM();
   try {
     vm.run(environment);
@@ -68,30 +68,26 @@ test('paid guides register without BNGetInfo, cache or any account API', { skip:
     vm.run(`
       assert(BNGetInfo == nil)
       assert(DXPData.cache == nil)
-      assert(#addon.embeddedGuides == 33)
+      assert(#addon.embeddedGuides == 0)
+      assert(addon.launcherGuideDigest == "" and addon.defaultGuideImportKey == nil)
       assert(addon.ReadCacheData("string") == "1")
       assert(addon.ReadCacheData("number") == 1)
-      addon.db = {profile = {guides = {}}}
-      addon.CacheGuide("test", "#group Demo\\n#name Test\\nstep\\n", nil, 1)
     `);
-    vm.run('assert(addon.db.profile.guides["test|1"].groupOrContent:sub(1, 4) == "--1\\n")');
   } finally { vm.close(); }
 });
 
-test('actual route parser reads all purchased sections for Horde race/class combinations', { skip: !ready }, async () => {
-  const source = await readFile(resolve(root, 'UserGuides/ForeverHorde.lua'), 'utf8');
-  const commands = [...new Set([...source.matchAll(/^\s*\.(\S+)/gm)].map(match => match[1]))];
+test('actual parser reads server guide fixtures for Horde race/class combinations', { skip: !ready }, async () => {
+  const guides = ['Horde', 'Mage'].map((condition, index) =>
+    `#forever\n#group Server Fixture\n#name Route ${index}\n<< ${condition}\nstep\n.accept ${index + 1} >>Test quest\n`);
   for (const [race, klass] of [['Orc', 'WARRIOR'], ['Troll', 'MAGE'], ['Scourge', 'WARLOCK'], ['Tauren', 'DRUID']]) {
     const vm = createVM();
     try {
       vm.run(environment);
       vm.run(`addon.player.class = "${klass}"; addon.player.race = "${race}"`);
       await vm.file(resolve(root, 'GuideLoader.lua'));
-      await vm.file(resolve(root, 'UserGuides/ForeverHorde.lua'));
       vm.run(`
-        for _, command in ipairs({${commands.map(s => JSON.stringify(s)).join(',')}}) do
-            addon.functions[command] = function(line, text) return {text = text} end
-        end
+        addon.functions.accept = function(line, text) return {text = text} end
+        ${guides.map(guide => `addon.DiscodicXP.RegisterGuide([=[${guide}]=])`).join('\n')}
         local parsed, applicable = 0, 0
         for _, entry in ipairs(addon.embeddedGuides) do
             local guide, err = addon.ParseGuide(entry.groupOrContent, nil, nil, true)
@@ -104,8 +100,8 @@ test('actual route parser reads all purchased sections for Horde race/class comb
             end
             parsed = parsed + 1
         end
-        assert(parsed == 33)
-        assert(applicable >= 30)
+        assert(parsed == 2)
+        assert(applicable == (addon.player.class == "MAGE" and 2 or 1))
       `);
     } finally { vm.close(); }
   }
@@ -142,7 +138,8 @@ test('show and hide commands are idempotent and Russian aliases work', { skip: !
       addon.settings.ChatCommand("маршруты")
       assert(selected)
       addon.settings.ChatCommand("импорт")
-      assert(importOpened)
+      addon.settings.ChatCommand("import")
+      assert(not importOpened)
       addon.settings.ChatCommand("debug")
       assert(fallback == "debug")
     `);

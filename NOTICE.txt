@@ -1,4 +1,4 @@
-DiscodicXP for WoW Forever, version 0.4.2
+DiscordikXP for WoW Forever, version 0.5.1
 
 This is a local derivative of RestedXP Guides v4.11.23 by RestedXP.
 The original engine is licensed under Creative Commons
@@ -7,18 +7,17 @@ The complete upstream license is included as LICENSE in each build.
 Original project: https://github.com/RestedXP/RXPGuides
 License: https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-Modifications: separate addon namespace and saved variables, local guide
-preparation, account-independent runtime and cache, Russian UI defaults,
-Forever theme and commands, Forever-only load manifest, in-game guide
-import and transactional updates with account-independent decoding.
+Modifications: separate addon namespace and saved variables, account-independent
+runtime and cache, client-locale UI, Forever theme and commands, Forever-only
+load manifest, and guide delivery through the authenticated update service.
 
 Bundled third-party libraries retain their original license notices.
 Fira Sans Regular is bundled under the SIL Open Font License 1.1.
 Copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
 Its license and source revision are included in Fonts/OFL.txt and Fonts/README.md.
-The personal build includes a name-only extract of QuestieDB's Forever
+The build includes a name-only extract of QuestieDB's Forever
 English/Russian entity data. Source: https://github.com/Questie/QuestieDB
 The exact source revision is recorded in build.json and NameKnowledge.lua.
-The purchased guide is separate content supplied locally by its owner.
+Purchased guides are separate content uploaded by their owner to the update service.
 It is not covered by the engine license and must not be redistributed
 as part of a public project or public release archive.

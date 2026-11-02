@@ -5,9 +5,9 @@ local originalCommand = addon.settings.ChatCommand
 addon.settings.ChatCommand = function(input)
     input = (input or ""):match("^%s*(.-)%s*$")
     if input == "help" or input == "помощь" then
-        addon.comms.PrettyPrint(L("/dxp — settings; /dxp import — import guide; /dxp guides — guides; /dxp show — show; /dxp hide — hide; /dxp npc on|off — NPC window; /dxp status — status."))
+        addon.comms.PrettyPrint(L("/dxp — settings; /dxp guides — guides; /dxp show — show; /dxp hide — hide; /dxp npc on|off — NPC window; /dxp status — status. Update guides in the launcher, then /reload."))
     elseif input == "import" or input == "импорт" then
-        addon.guideImporter:Open()
+        addon.comms.PrettyPrint(L("Update guides with the launcher's Update guides button, then /reload."))
     elseif input == "guides" or input == "маршруты" then
         if InCombatLockdown() then
             addon.comms.PrettyPrint(L("Guide selection is available after combat."))

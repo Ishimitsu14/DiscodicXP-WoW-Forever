@@ -73,7 +73,8 @@ if russianClient then
     L["Unpacking…"] = "Распаковка…"
     L["Guide data is damaged: checksum mismatch."] = "Данные гайда повреждены: контрольная сумма не совпала."
     L["The pasted file is incomplete: section count mismatch."] = "Вставлен не весь файл: число разделов не совпало."
-    L["/dxp — settings; /dxp import — import guide; /dxp guides — guides; /dxp show — show; /dxp hide — hide; /dxp npc on|off — NPC window; /dxp status — status."] = "/dxp — настройки; /dxp import — импорт гайда; /dxp guides — маршруты; /dxp show — показать; /dxp hide — скрыть; /dxp npc on|off — окно НПС; /dxp status — состояние."
+    L["/dxp — settings; /dxp guides — guides; /dxp show — show; /dxp hide — hide; /dxp npc on|off — NPC window; /dxp status — status. Update guides in the launcher, then /reload."] = "/dxp — настройки; /dxp guides — маршруты; /dxp show — показать; /dxp hide — скрыть; /dxp npc on|off — окно НПС; /dxp status — состояние. Обновление гайдов — в лаунчере, затем /reload."
+    L["Update guides with the launcher's Update guides button, then /reload."] = "Гайды обновляются кнопкой «Обновить гайды» в лаунчере. После обновления выполните /reload."
     L["Guide selection is available after combat."] = "Выбор маршрута доступен после боя."
     L["DiscordikXP · Forever · progress sync through the launcher"] = "DiscordikXP · Forever · синхронизация прогресса через лаунчер"
     L["Guide: %s; step: %s"] = "Маршрут: %s; шаг: %s"
@@ -82,7 +83,6 @@ if russianClient then
     L["NPC selection window enabled."] = "Окно выбора НПС включено."
     L["NPC selection window disabled."] = "Окно выбора НПС отключено."
     L["The window will update after combat."] = "Окно обновится после боя."
-    L["Prepare encrypted guides with the DiscordikXP local builder."] = "Подготовьте зашифрованный гайд локальным сборщиком DiscordikXP."
 end
 
 local zones = {

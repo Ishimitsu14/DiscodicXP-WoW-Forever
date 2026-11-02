@@ -3,7 +3,6 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { decodeGuides, deriveKey, luaString } from './guide-codec.mjs';
 import { knowledgeLua, validateKnowledge } from './name-data.mjs';
 
 export const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,7 +30,7 @@ export function patchSource(path, source) {
     if (start < 0 || end < start) throw new Error('Не найдена граница импортера.');
     text = text.slice(0, start) + `local function CheckDataIntegrity(str, checksum)
     if not checksum then return addon.A32(str) end
-    return false, addon.locale.Get("Prepare encrypted guides with the DiscordikXP local builder.")
+    return false, addon.locale.Get("Update guides with the launcher's Update guides button, then /reload.")
 end
 
 ` + text.slice(end);
@@ -114,6 +113,10 @@ end
     const resetStart = text.indexOf('            resetGuideProgressTop = {\n', feedbackStart);
     if (feedbackStart < 0 || resetStart < feedbackStart) throw new Error('Не найдены кнопки обратной связи и конфигуратора.');
     text = text.slice(0, feedbackStart) + text.slice(resetStart);
+    const importButtonStart = text.indexOf('            importGuidesButton = {\n');
+    const progressStart = text.indexOf('            resetGuideProgressTop = {\n', importButtonStart);
+    if (importButtonStart < 0 || progressStart < importButtonStart) throw new Error('Не найдена кнопка импорта гайдов.');
+    text = text.slice(0, importButtonStart) + text.slice(progressStart);
     text = replaceOnce(text, '                    enableVendorTreasure = {\n', `                    hideNpcWindow = {
                         order = 2.41,
                         name = L("Hide NPC Selection window"),
@@ -138,6 +141,15 @@ end
 `, '', 'форму обратной связи на карте');
   }
   if (path === 'GuideWindow.lua') {
+    text = replaceOnce(text, `    tinsert(menuList, {
+        text = L("Import guide"),
+        notCheckable = 1,
+        func = function()
+            addon.guideImporter:Open()
+        end
+    })
+
+`, '', 'импорт в меню маршрута');
     text = replaceOnce(text, `    if not addon.settings.profile.enableBetaFeatures then
         return
     end
@@ -306,7 +318,7 @@ function createHeaderTexture() {
   return bytes;
 }
 
-export async function build({ source, guideFile, output = resolve(projectRoot, 'dist/DiscodicXP') }) {
+export async function build({ source, output = resolve(projectRoot, 'dist/DiscodicXP') }) {
   source = resolve(source);
   output = resolve(output);
   const upstreamToc = await readFile(resolve(source, 'RXPGuides.toc'), 'utf8');
@@ -315,10 +327,8 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
   }
   if (existsSync(output)) throw new Error('Каталог сборки уже существует. Укажите новый --output.');
   const knowledge = validateKnowledge(JSON.parse(await readFile(resolve(projectRoot, 'data/names.ruRU.json'), 'utf8')));
-  const encodedGuide = await readFile(guideFile, 'utf8');
-  const decoded = decodeGuides(encodedGuide, guideFile);
   const entries = upstreamToc.split(/\r?\n/).filter(line => {
-    if (!line.trim() || line.startsWith('#') || line.startsWith('lang/')) return false;
+    if (!line.trim() || line.startsWith('#') || line.startsWith('lang/') || line.startsWith('Guides/GuideList-')) return false;
     const games = line.match(/\[AllowLoadGameType ([^\]]+)\]/)?.[1];
     return !games || games.split(',').includes('camelot');
   }).map(line => line.replace(/\s*\[AllowLoadGameType[^\]]+\]/, '').trim().replaceAll('\\', '/'));
@@ -365,32 +375,27 @@ export async function build({ source, guideFile, output = resolve(projectRoot, '
     const isCode = ['.lua', '.xml'].includes(extname(name).toLowerCase());
     await writeFile(destination, isCode ? patchSource(name, bytes.toString('utf8')) : bytes);
   }
-  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideCodec.lua', 'GuideImport.lua', 'ImportWindow.lua', 'NameResolver.lua', 'SyncIdentity.lua', 'Preferences.lua', 'Commands.lua']) {
+  for (const name of ['Language.lua', 'ForeverTheme.lua', 'GuideUpdates.lua', 'NameResolver.lua', 'SyncIdentity.lua', 'Preferences.lua', 'Commands.lua']) {
     await mkdir(resolve(output, 'Discodic'), { recursive: true });
     await writeFile(resolve(output, 'Discodic', name), await readFile(resolve(projectRoot, 'addon', name)));
   }
   await writeFile(resolve(output, 'Discodic/NameKnowledge.lua'), knowledgeLua(knowledge));
-  const identity = guideFile.match(/!([^!]+#\d+)\.txt$/i)?.[1];
-  await writeFile(resolve(output, 'Discodic/ImportKey.lua'),
-    `local _, addon = ...\naddon.defaultGuideImportKey = {${deriveKey(identity).join(',')}}\n`);
   await mkdir(resolve(output, 'Textures/Forever'), { recursive: true });
   await writeFile(resolve(output, 'Textures/Forever/header.tga'), createHeaderTexture());
-  const guideSource = 'local _, addon = ...\n\n' + decoded.guides.map(text =>
-    `addon.DiscodicXP.RegisterGuide(${luaString(rebrand(text))})\n`).join('\n');
+  const guideSource = 'local _, addon = ...\naddon.launcherGuideDigest = ""\n';
   await mkdir(resolve(output, 'UserGuides'), { recursive: true });
   await writeFile(resolve(output, 'UserGuides/ForeverHorde.lua'), guideSource);
   const tocEntries = entries.map(rebrand);
   tocEntries.splice(tocEntries.indexOf('Locale.lua') + 1, 0, 'Discodic/Language.lua');
   tocEntries.splice(tocEntries.indexOf('Themes.lua') + 1, 0, 'Discodic/ForeverTheme.lua');
   tocEntries.splice(tocEntries.indexOf('functions.lua') + 1, 0, 'Discodic/NameKnowledge.lua', 'Discodic/NameResolver.lua');
-  tocEntries.push('Discodic/GuideCodec.lua', 'Discodic/ImportKey.lua', 'Discodic/GuideImport.lua',
-    'Discodic/ImportWindow.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
+  tocEntries.push('Discodic/GuideUpdates.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
   const toc = `## Interface: 16001
 ## Title: DiscordikXP |cffe0bd7aForever|r
 ## Notes: WoW Forever leveling guides. Interface follows the client language.
 ## Notes-ruRU: Маршруты прокачки WoW Forever. Интерфейс под язык клиента.
 ## Author: DiscordikXP
-## Version: 0.4.4
+## Version: 0.5.1
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -403,9 +408,8 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.4.4', interface: 16001,
-    engine: 'RestedXP v4.11.23', guides: decoded.guides.length,
-    sourceDigest: createHash('sha256').update(encodedGuide).digest('hex'),
+    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.5.1', interface: 16001, guideUpdates: 1,
+    engine: 'RestedXP v4.11.23', guides: 0,
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),
     runtimeAccountBinding: false,
     nameKnowledge: { revision: knowledge.revision, npc: Object.keys(knowledge.npc).length, quest: Object.keys(knowledge.quest).length },
@@ -418,12 +422,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const args = process.argv.slice(2);
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--source', '--guide', '--output'].includes(args[i]) || !args[i + 1]) {
-      throw new Error('Аргументы: --source <RXPGuides> --guide <файл.txt> [--output <новый каталог>]');
+    if (!['--source', '--output'].includes(args[i]) || !args[i + 1]) {
+      throw new Error('Аргументы: --source <RXPGuides> [--output <новый каталог>]');
     }
-    options[args[i] === '--guide' ? 'guideFile' : args[i].slice(2)] = args[i + 1];
+    options[args[i].slice(2)] = args[i + 1];
   }
-  if (!options.source || !options.guideFile) throw new Error('Нужны --source и --guide.');
+  if (!options.source) throw new Error('Нужен --source.');
   try {
     console.log(JSON.stringify(await build(options), null, 2));
   } catch (error) {

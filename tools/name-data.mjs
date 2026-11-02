@@ -1,5 +1,10 @@
 import luaparse from 'luaparse';
-import { luaString } from './guide-codec.mjs';
+
+function luaString(value) {
+  let separator = '';
+  while (value.includes(`]${separator}]`)) separator += '=';
+  return `[${separator}[\n${value}]${separator}]`;
+}
 
 function parse(source) {
   return luaparse.parse(source, { luaVersion: '5.1', encodingMode: 'pseudo-latin1' });
