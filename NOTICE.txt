@@ -1,9 +1,11 @@
-DiscordikXP for WoW Forever, version 0.5.1
+DiscordikXP for WoW Forever, version 0.5.2
 
 This is a local derivative of RestedXP Guides v4.11.23 by RestedXP.
 The original engine is licensed under Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International.
 The complete upstream license is included as LICENSE in each build.
+Free Horde starter routes are taken from RestedXP Guides; their source version
+is recorded separately as starterSource in build.json.
 Original project: https://github.com/RestedXP/RXPGuides
 License: https://creativecommons.org/licenses/by-nc-sa/4.0/
 

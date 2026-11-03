@@ -50,7 +50,7 @@ test('launcher guide loading retires imported caches and invalidates metadata on
   } finally { vm.close(); }
 });
 
-test('public build leaves guide delivery to the launcher', { skip: !existsSync(resolve(root, 'DiscodicXP.toc')) }, async () => {
+test('public build leaves purchased guide delivery to the launcher', { skip: !existsSync(resolve(root, 'DiscodicXP.toc')) }, async () => {
   const settings = await readFile(`${root}/SettingsPanel.lua`, 'utf8');
   const window = await readFile(`${root}/GuideWindow.lua`, 'utf8');
   const toc = await readFile(`${root}/DiscodicXP.toc`, 'utf8');
@@ -63,6 +63,7 @@ test('public build leaves guide delivery to the launcher', { skip: !existsSync(r
   const manifest = JSON.parse(await readFile(resolve(root, 'build.json'), 'utf8'));
   assert.equal(manifest.guides, 0);
   assert.equal(manifest.guideUpdates, 1);
+  assert.ok(manifest.starterGuides > 0);
   assert.equal(manifest.sourceDigest, undefined);
 });
 
@@ -70,11 +71,17 @@ test('public build verification rejects guide payloads and embedded import keys'
   const fixture = await mkdtemp(resolve(tmpdir(), 'dxp-public-build-'));
   t.after(() => rm(fixture, { recursive: true, force: true }));
   await mkdir(resolve(fixture, 'UserGuides'));
-  await writeFile(resolve(fixture, 'DiscodicXP.toc'), '## Interface: 16001\nUserGuides/ForeverHorde.lua\n');
-  await writeFile(resolve(fixture, 'build.json'), JSON.stringify({ guides: 0, guideUpdates: 1 }));
+  await mkdir(resolve(fixture, 'Guides/Starters'), { recursive: true });
+  const toc = '## Interface: 16001\nGuides/Starters/Fixture.lua\nUserGuides/ForeverHorde.lua\n';
+  await writeFile(resolve(fixture, 'DiscodicXP.toc'), toc);
+  await writeFile(resolve(fixture, 'Guides/Starters/Fixture.lua'), 'DiscodicXP.RegisterGuide([[#forever\n#group Fixture\n#name 1-6 Starter\nstep\n]])');
+  await writeFile(resolve(fixture, 'build.json'), JSON.stringify({ guides: 0, guideUpdates: 1, starterGuides: 1 }));
   const guide = resolve(fixture, 'UserGuides/ForeverHorde.lua');
   await writeFile(guide, 'local _, addon = ...\n');
   assert.equal((await checkBuild(fixture)).paidGuides, 0);
+  await writeFile(resolve(fixture, 'DiscodicXP.toc'), '## Interface: 16001\nUserGuides/ForeverHorde.lua\n');
+  await assert.rejects(checkBuild(fixture), /не включён в TOC/);
+  await writeFile(resolve(fixture, 'DiscodicXP.toc'), toc);
   await writeFile(guide, 'addon.DiscodicXP.RegisterGuide([[#group Fixture\n#name Private\nstep\n]])');
   await assert.rejects(checkBuild(fixture), /Публичная сборка/);
   await writeFile(guide, 'local _, addon = ...\n');

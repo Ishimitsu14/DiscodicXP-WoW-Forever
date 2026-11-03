@@ -59,7 +59,7 @@ test('Lua 5.1 syntax, load graph and namespaces are valid', { skip: !ready }, as
   assert.ok(checked.luaFiles > 50);
 });
 
-test('fresh addon has no bundled guides or account-bound import key', { skip: !ready }, async () => {
+test('fresh addon keeps the server guide file empty without an account-bound import key', { skip: !ready }, async () => {
   const vm = createVM();
   try {
     vm.run(environment);
@@ -74,6 +74,57 @@ test('fresh addon has no bundled guides or account-bound import key', { skip: !r
       assert(addon.ReadCacheData("number") == 1)
     `);
   } finally { vm.close(); }
+});
+
+test('bundled Horde starters load for new characters and join the server route at level 22', { skip: !ready }, async () => {
+  const toc = await readFile(resolve(root, 'DiscodicXP.toc'), 'utf8');
+  const entries = toc.split(/\r?\n/).filter(line => line.startsWith('Guides/Starters/'));
+  assert.equal(entries.length, 6);
+  const sources = await Promise.all(entries.map(entry => readFile(resolve(root, entry), 'utf8')));
+  const commands = [...new Set(sources.flatMap(source => [...source.matchAll(/^\s*\.(\S+)/gm)].map(match => match[1])))];
+  const handlers = await readFile(resolve(root, 'functions.lua'), 'utf8');
+  const missing = commands.filter(command => {
+    const escaped = command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return !new RegExp(`addon\\.functions(?:\\.${escaped}\\b|\\[['"]${escaped}['"]\\])`).test(handlers);
+  });
+  assert.deepEqual(missing, []);
+  for (const [race, klass, start] of [['Orc', 'SHAMAN', '01-06 Durotar'], ['Troll', 'MAGE', '01-06 Durotar'],
+    ['Scourge', 'WARLOCK', '01-06 Tirisfal Glades'], ['Tauren', 'DRUID', '01-06 Mulgore'], ['Skyborne', 'SHAMAN', '01-09 Zephras Isle']]) {
+    const vm = createVM();
+    try {
+      vm.run(environment);
+      vm.run(`
+        function UnitLevel() return 2 end
+        function UnitFactionGroup() return "Horde" end
+        addon.player.class = "${klass}"; addon.player.race = "${race}"
+        addon.enabledLocale = {}; DXP = addon
+        addon.db = {profile = {guides = {}}}; addon.guideCache = {}
+      `);
+      await vm.file(resolve(root, 'GuideLoader.lua'));
+      for (const entry of entries) await vm.file(resolve(root, entry));
+      await vm.file(resolve(root, 'UserGuides/ForeverHorde.lua'));
+      vm.run(`
+        assert(#addon.embeddedGuides == 15)
+        for _, command in ipairs({${commands.map(command => JSON.stringify(command)).join(',')}}) do
+          addon.functions[command] = function(line, text) return {text = text} end
+        end
+        addon.DiscodicXP.RegisterGuide([=[#forever
+#group DiscodicXP Forever Guide (H)
+#name 22-24 Hillsbrad
+<< Horde
+step
+.accept 123 >>Server route fixture
+]=])
+        addon.LoadEmbeddedGuides()
+        local group = "DiscodicXP Forever Guide (H)||"
+        local starter = assert(addon.guides[group .. "${start}"], "Missing starter for ${race} ${klass}")
+        assert(not starter.lowPrio and addon.applies(starter.defaultfor))
+        local last = assert(addon.guides[group .. "17-22 Stonetalon/Barrens/Ashenvale"])
+        assert(last.next == "22-24 Hillsbrad")
+        assert(addon.guides[group .. last.next], "Missing continuation from server")
+      `);
+    } finally { vm.close(); }
+  }
 });
 
 test('actual parser reads server guide fixtures for Horde race/class combinations', { skip: !ready }, async () => {

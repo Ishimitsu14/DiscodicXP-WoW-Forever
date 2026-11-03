@@ -74,8 +74,14 @@ export async function checkBuild(root = resolve('dist/DiscodicXP')) {
   if (existsSync(resolve(root, 'Discodic/ImportKey.lua')) || files.some(file => /Guides[\\/](?:forever|SurvivalGuide)[\\/]/.test(file))) {
     throw new Error('В публичную сборку попали локальные гайды или ключ импорта.');
   }
+  let starterGuides = 0;
+  for (const file of files.filter(file => /Guides[\\/]Starters[\\/].*\.lua$/.test(file))) {
+    if (!loaded.has(file)) throw new Error('Стартовый гайд не включён в TOC.');
+    starterGuides += [...(await readFile(file, 'utf8')).matchAll(/DiscodicXP\.RegisterGuide\(/g)].length;
+  }
+  if (!starterGuides || starterGuides !== manifest.starterGuides) throw new Error('Не совпало число стартовых маршрутов.');
   if (!toc.includes('## Interface: 16001')) throw new Error('Неверная версия клиента.');
-  return { luaFiles, manifestFiles: loaded.size, paidGuides: manifest.guides,
+  return { luaFiles, manifestFiles: loaded.size, paidGuides: manifest.guides, starterGuides,
     accountBinding: manifest.runtimeAccountBinding, optionalBattleTagCapture };
 }
 

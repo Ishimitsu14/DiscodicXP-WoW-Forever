@@ -318,8 +318,9 @@ function createHeaderTexture() {
   return bytes;
 }
 
-export async function build({ source, output = resolve(projectRoot, 'dist/DiscodicXP') }) {
+export async function build({ source, starterSource = source, output = resolve(projectRoot, 'dist/DiscodicXP') }) {
   source = resolve(source);
+  starterSource = resolve(starterSource);
   output = resolve(output);
   const upstreamToc = await readFile(resolve(source, 'RXPGuides.toc'), 'utf8');
   if (!/^## Version: v4\.11\.23\s*$/m.test(upstreamToc)) {
@@ -349,6 +350,21 @@ export async function build({ source, output = resolve(projectRoot, 'dist/Discod
   }
   for (const entry of entries) await collect(entry);
   await collect('Bindings.xml');
+  const starterToc = await readFile(resolve(starterSource, 'RXPGuides.toc'), 'utf8');
+  const starterVersion = starterToc.match(/^## Version: (v[\d.]+)\s*$/m)?.[1];
+  if (!starterVersion) throw new Error('Не найдена версия источника стартовых гайдов.');
+  const starterEntries = [];
+  let starterGuides = 0;
+  for (const name of ['RestedXP-Skyborne.lua', 'Horde-01-12_Durotar.lua', 'Horde-01-14_Undead.lua',
+    'Horde-1-12_Mulgore.lua', 'Horde-12-22_Barrens.lua', 'Horde-Mage-12-21.lua']) {
+    const code = await readFile(safeMember(starterSource, `Guides/forever/${name}`));
+    const count = [...code.toString('utf8').matchAll(/RXPGuides\.RegisterGuide\(/g)].length;
+    if (!count) throw new Error(`Не найдены стартовые маршруты в ${name}.`);
+    const path = `Guides/Starters/${name}`;
+    files.set(path, code);
+    starterEntries.push(path);
+    starterGuides += count;
+  }
   async function collectDirectory(dir) {
     for (const entry of await readdir(resolve(source, dir), { withFileTypes: true })) {
       const path = `${dir}/${entry.name}`;
@@ -389,13 +405,13 @@ export async function build({ source, output = resolve(projectRoot, 'dist/Discod
   tocEntries.splice(tocEntries.indexOf('Locale.lua') + 1, 0, 'Discodic/Language.lua');
   tocEntries.splice(tocEntries.indexOf('Themes.lua') + 1, 0, 'Discodic/ForeverTheme.lua');
   tocEntries.splice(tocEntries.indexOf('functions.lua') + 1, 0, 'Discodic/NameKnowledge.lua', 'Discodic/NameResolver.lua');
-  tocEntries.push('Discodic/GuideUpdates.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
+  tocEntries.push(...starterEntries.map(rebrand), 'Discodic/GuideUpdates.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
   const toc = `## Interface: 16001
 ## Title: DiscordikXP |cffe0bd7aForever|r
 ## Notes: WoW Forever leveling guides. Interface follows the client language.
 ## Notes-ruRU: Маршруты прокачки WoW Forever. Интерфейс под язык клиента.
 ## Author: DiscordikXP
-## Version: 0.5.1
+## Version: 0.5.2
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -408,8 +424,9 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.5.1', interface: 16001, guideUpdates: 1,
+    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.5.2', interface: 16001, guideUpdates: 1,
     engine: 'RestedXP v4.11.23', guides: 0,
+    starterGuides, starterSource: `RestedXP ${starterVersion}`,
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),
     runtimeAccountBinding: false,
     nameKnowledge: { revision: knowledge.revision, npc: Object.keys(knowledge.npc).length, quest: Object.keys(knowledge.quest).length },
@@ -422,10 +439,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const args = process.argv.slice(2);
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--source', '--output'].includes(args[i]) || !args[i + 1]) {
-      throw new Error('Аргументы: --source <RXPGuides> [--output <новый каталог>]');
+    if (!['--source', '--starter-source', '--output'].includes(args[i]) || !args[i + 1]) {
+      throw new Error('Аргументы: --source <RXPGuides> [--starter-source <RXPGuides>] [--output <новый каталог>]');
     }
-    options[args[i].slice(2)] = args[i + 1];
+    options[args[i] === '--starter-source' ? 'starterSource' : args[i].slice(2)] = args[i + 1];
   }
   if (!options.source) throw new Error('Нужен --source.');
   try {
