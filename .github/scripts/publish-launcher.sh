@@ -13,8 +13,8 @@ trap cleanup EXIT
 
 [[ "$LAUNCHER_VERSION" =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ && "$RELEASE_TAG" == "launcher-v$LAUNCHER_VERSION" ]]
 cd dist/launcher-win-x64
-sha256sum --check DiscodicXP.Launcher.exe.sha256
-launcher_hash="$(sha256sum DiscodicXP.Launcher.exe | cut -d ' ' -f 1)"
+sha256sum --check DiscordicXP.Launcher.exe.sha256
+launcher_hash="$(sha256sum DiscordicXP.Launcher.exe | cut -d ' ' -f 1)"
 latest_tag="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
 if [[ "$latest_tag" == "$RELEASE_TAG" ]]; then
     echo 'Launcher releases must use --latest=false; restore the addon release as Latest before retrying.' >&2
@@ -38,7 +38,7 @@ elif [[ "$status" != 404 ]]; then
 fi
 
 assets="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
-for file in DiscodicXP.Launcher.exe DiscodicXP.Launcher.exe.sha256; do
+for file in DiscordicXP.Launcher.exe DiscordicXP.Launcher.exe.sha256; do
     if printf '%s\n' "$assets" | grep -Fxq "$file"; then
         existing="$(mktemp -d "$RUNNER_TEMP/discodicxp-asset.XXXXXXXX")"
         gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$file" --dir "$existing"
@@ -51,7 +51,7 @@ done
 
 remote_stage="$(ssh -F "$SSH_CONFIG" discodicxp 'umask 077; mktemp -d /tmp/discodicxp-ci.XXXXXXXX')"
 [[ "$remote_stage" =~ ^/tmp/discodicxp-ci\.[a-zA-Z0-9]{8}$ ]]
-scp -F "$SSH_CONFIG" DiscodicXP.Launcher.exe "discodicxp:$remote_stage/launcher.exe"
+scp -F "$SSH_CONFIG" DiscordicXP.Launcher.exe "discodicxp:$remote_stage/launcher.exe"
 ssh -F "$SSH_CONFIG" discodicxp "bash -s -- '$remote_stage/launcher.exe' '$launcher_hash' '$LAUNCHER_VERSION'" <<'REMOTE'
 set -euo pipefail
 if [[ "$(id -u)" == 0 ]]; then
@@ -66,13 +66,13 @@ node --input-type=module - "$RUNNER_TEMP/published-launcher.json" "$LAUNCHER_VER
 import { readFileSync, statSync } from 'node:fs';
 const [path, version, hash] = process.argv.slice(2);
 const manifest = JSON.parse(readFileSync(path, 'utf8'));
-if (manifest.version !== version || manifest.sha256 !== hash || manifest.size !== statSync('DiscodicXP.Launcher.exe').size
+if (manifest.version !== version || manifest.sha256 !== hash || manifest.size !== statSync('DiscordicXP.Launcher.exe').size
     || manifest.downloadPath !== `/downloads/launcher/${hash}.exe`) throw new Error('Published launcher manifest mismatch.');
 NODE
 curl --fail --silent --show-error --max-time 120 "$DEPLOY_ORIGIN/downloads/launcher/$launcher_hash.exe" --output "$RUNNER_TEMP/published-launcher.exe"
-cmp -- DiscodicXP.Launcher.exe "$RUNNER_TEMP/published-launcher.exe"
+cmp -- DiscordicXP.Launcher.exe "$RUNNER_TEMP/published-launcher.exe"
 curl --fail --silent --show-error --max-time 120 "$DEPLOY_ORIGIN/downloads/DiscodicXP.Launcher.exe" --output "$RUNNER_TEMP/published-launcher.exe"
-cmp -- DiscodicXP.Launcher.exe "$RUNNER_TEMP/published-launcher.exe"
+cmp -- DiscordicXP.Launcher.exe "$RUNNER_TEMP/published-launcher.exe"
 curl --fail --silent --show-error --max-time 20 "$DEPLOY_ORIGIN/downloads/DiscodicXP.Launcher.exe.sha256" --output "$RUNNER_TEMP/published-launcher.sha256"
-cmp -- DiscodicXP.Launcher.exe.sha256 "$RUNNER_TEMP/published-launcher.sha256"
+cmp -- DiscordicXP.Launcher.exe.sha256 "$RUNNER_TEMP/published-launcher.sha256"
 printf 'Published launcher %s: %s/downloads/DiscodicXP.Launcher.exe\n' "$LAUNCHER_VERSION" "$DEPLOY_ORIGIN" >> "$GITHUB_STEP_SUMMARY"

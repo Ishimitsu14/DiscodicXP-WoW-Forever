@@ -45,7 +45,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          [xml]$project = Get-Content launcher/DiscodicXP.Launcher.csproj
+          [xml]$project = Get-Content launcher/DiscordicXP.Launcher.csproj
           $version = [string]$project.Project.PropertyGroup.Version
           if ($version -notmatch '^\d{1,4}\.\d{1,4}\.\d{1,4}$') { throw 'Invalid launcher version.' }
           if ($env:RELEASE_TAG -and $env:RELEASE_TAG -cne "launcher-v$version") { throw 'Release tag must match the launcher project version.' }
@@ -65,16 +65,16 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          $exe = Get-Item dist/launcher-win-x64/DiscodicXP.Launcher.exe
+          $exe = Get-Item dist/launcher-win-x64/DiscordicXP.Launcher.exe
           if ($exe.VersionInfo.ProductVersion.Split('+')[0] -cne $env:EXPECTED_VERSION) { throw 'Executable version mismatch.' }
           $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText($exe.FullName + '.sha256', "$hash  DiscodicXP.Launcher.exe`n")
+          [IO.File]::WriteAllText($exe.FullName + '.sha256', "$hash  DiscordicXP.Launcher.exe`n")
       - uses: actions/upload-artifact@v7
         with:
           name: launcher-win-x64
           path: |
-            dist/launcher-win-x64/DiscodicXP.Launcher.exe
-            dist/launcher-win-x64/DiscodicXP.Launcher.exe.sha256
+            dist/launcher-win-x64/DiscordicXP.Launcher.exe
+            dist/launcher-win-x64/DiscordicXP.Launcher.exe.sha256
           if-no-files-found: error
           retention-days: 14
 

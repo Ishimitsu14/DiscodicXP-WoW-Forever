@@ -5,8 +5,11 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.4.0</Version>
-    <AssemblyName>DiscodicXP.Launcher</AssemblyName>
+    <Version>0.4.1</Version>
+    <AssemblyName>DiscordicXP.Launcher</AssemblyName>
+    <!-- Existing launchers validate this product identity before self-update. -->
+    <Product>DiscodicXP.Launcher</Product>
+    <Description>DiscordicXP Launcher</Description>
     <ApplicationIcon>Assets/Launcher.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>

@@ -32,7 +32,7 @@ public static class AddonInstaller
             || !File.Exists(Path.Combine(path, "DiscodicXP.toc")))
         {
             manifest.Dispose();
-            throw new InvalidOperationException("В папке отсутствует корректная сборка DiscodicXP.");
+            throw new InvalidOperationException("В папке отсутствует корректная сборка DiscordicXP.");
         }
         return manifest;
     }

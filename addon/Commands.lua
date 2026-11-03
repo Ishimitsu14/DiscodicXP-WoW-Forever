@@ -16,7 +16,7 @@ addon.settings.ChatCommand = function(input)
         addon.v2:ShowGuideSelectionMenu()
     elseif input == "status" or input == "статус" then
         local guide = addon.currentGuide
-        addon.comms.PrettyPrint(L("DiscordikXP · Forever · progress sync through the launcher"))
+        addon.comms.PrettyPrint(L("DiscordicXP · Forever · progress sync through the launcher"))
         addon.comms.PrettyPrint(L("Guide: %s; step: %s"), guide and addon.LocalizeGuideName(guide.name) or L("not selected"), tostring(addon.GetGuideProgress() or 1))
     elseif input == "npc" or input:match("^npc%s") or input == "нпс" or input:match("^нпс%s") then
         local action = input:match("^%S+%s+(.+)$") or "toggle"

@@ -16,9 +16,9 @@ if (-not $RuntimeFrameworkVersion) {
     $RuntimeFrameworkVersion = $releaseMetadata.'latest-runtime'
 }
 if ($RuntimeFrameworkVersion -notmatch '^9\.0\.\d+$') { throw 'Некорректная версия .NET Runtime.' }
-dotnet publish (Join-Path $PSScriptRoot 'DiscodicXP.Launcher.csproj') --configuration Release --runtime $Runtime --self-contained true -p:RuntimeFrameworkVersion=$RuntimeFrameworkVersion -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output $outputPath --nologo
+dotnet publish (Join-Path $PSScriptRoot 'DiscordicXP.Launcher.csproj') --configuration Release --runtime $Runtime --self-contained true -p:RuntimeFrameworkVersion=$RuntimeFrameworkVersion -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output $outputPath --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Не удалось собрать лаунчер.' }
-$launcherFile = Get-Item -LiteralPath (Join-Path $outputPath 'DiscodicXP.Launcher.exe')
+$launcherFile = Get-Item -LiteralPath (Join-Path $outputPath 'DiscordicXP.Launcher.exe')
 $launcherHash = (Get-FileHash -LiteralPath $launcherFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 $launcherVersion = $launcherFile.VersionInfo.ProductVersion.Split('+')[0]
 Write-Output "Готово: $($launcherFile.FullName)"

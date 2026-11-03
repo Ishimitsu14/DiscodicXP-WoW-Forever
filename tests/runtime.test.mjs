@@ -226,11 +226,11 @@ test('UI follows the client language and unknown locales fall back to English', 
       vm.run(`
         local L = LibStub("AceLocale-3.0"):GetLocale("DiscodicXP")
         local russian = GetLocale() == "ruRU"
-        assert(addon.displayName == "DiscordikXP")
-        assert(addon.locale.Get("DiscodicXP") == "DiscordikXP")
+        assert(addon.displayName == "DiscordicXP")
+        assert(addon.locale.Get("DiscodicXP") == "DiscordicXP")
         assert(addon.LocalizeGuideName("22-24 Hillsbrad") == (russian and "22-24 Хилсбрад" or "22-24 Hillsbrad"))
-        assert(addon.LocalizeGuideName("DiscodicXP Forever Guide") == "DiscordikXP Forever Guide")
-        assert(addon.locale.Get("DiscordikXP · Import guides") == (russian and "DiscordikXP · Импорт маршрутов" or "DiscordikXP · Import guides"))
+        assert(addon.LocalizeGuideName("DiscodicXP Forever Guide") == "DiscordicXP Forever Guide")
+        assert(addon.locale.Get("DiscordicXP · Import guides") == (russian and "DiscordicXP · Импорт маршрутов" or "DiscordicXP · Import guides"))
         assert(addon.locale.Get("Finish combat and try importing again.") == (russian and "Завершите бой и повторите импорт." or "Finish combat and try importing again."))
         assert(addon.locale.Get("Hide NPC Selection window") == (russian and "Скрыть окно выбора НПС" or "Hide NPC Selection window"))
         if russian then

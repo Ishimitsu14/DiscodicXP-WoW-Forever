@@ -1,4 +1,4 @@
-DiscordikXP for WoW Forever, version 0.5.2
+DiscordicXP for WoW Forever, version 0.5.2
 
 This is a local derivative of RestedXP Guides v4.11.23 by RestedXP.
 The original engine is licensed under Creative Commons

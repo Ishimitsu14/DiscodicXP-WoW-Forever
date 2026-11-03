@@ -180,7 +180,7 @@ public sealed class LauncherUpdateInstaller
             {
                 try { using var previous = Start(job.TargetPath); }
                 catch { }
-                System.Windows.MessageBox.Show("Обновление не завершилось. Предыдущая версия сохранена; повтори обновление позже.", "Обновление DiscodicXP");
+                System.Windows.MessageBox.Show("Обновление не завершилось. Предыдущая версия сохранена; повтори обновление позже.", "Обновление DiscordicXP");
             }
             return false;
         }

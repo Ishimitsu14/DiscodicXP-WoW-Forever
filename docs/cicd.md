@@ -1,7 +1,7 @@
 # CI/CD лаунчера
 
-Исходники лаунчера находятся в `DiscodicXP-WoW-Forever`, API и админка — в
-`DiscodicXP-WoW-Forever-AdminPanel`. Основная ветка обоих репозиториев — `main`.
+Исходники лаунчера находятся в `DiscordicXP-WoW-Forever`, API и админка — в
+`DiscordicXP-WoW-Forever-AdminPanel`. Основная ветка обоих репозиториев — `main`.
 Сервер автоматически обновляется по push в `main` серверного репозитория.
 
 Workflow `.github/workflows/launcher.yml` собирает и проверяет лаунчер на Windows
@@ -34,14 +34,14 @@ Variables `DEPLOY_PORT` и `DEPLOY_ORIGIN` необязательны; по ум
 
 ## Выпуск
 
-1. Обновите `<Version>` в `launcher/DiscodicXP.Launcher.csproj`.
+1. Обновите `<Version>` в `launcher/DiscordicXP.Launcher.csproj`.
 2. Сохраните исходники и workflow коммитом и отправьте их в `main`.
 3. Создайте обычный опубликованный релиз с тегом `launcher-v<версия>`, привязанный
    к проверенному коммиту. Снимите **Set as the latest release** в GitHub UI либо:
 
    ```powershell
    & $ghPath release create "launcher-v$version" `
-       --repo Ishimitsu14/DiscodicXP-WoW-Forever --target $releaseCommit `
+       --repo Ishimitsu14/DiscordicXP-WoW-Forever --target $releaseCommit `
        --title "DiscodicXP Launcher $version" --notes-file $notesFile --latest=false
    ```
 

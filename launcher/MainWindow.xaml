@@ -1,11 +1,11 @@
 <Window x:Class="DiscodicXP.Launcher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="DiscordikXP · Forever" Icon="Assets/Launcher.ico" Width="700" Height="880" MinWidth="540" MinHeight="600"
+        Title="DiscordicXP · Forever" Icon="Assets/Launcher.ico" Width="700" Height="880" MinWidth="540" MinHeight="600"
         Background="#18171A" Foreground="#E9E5DF" FontFamily="Segoe UI" FontSize="14" WindowStartupLocation="CenterScreen">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="30">
-            <TextBlock Text="DiscordikXP" FontSize="32" FontWeight="SemiBold" Foreground="{StaticResource Gold}"/>
+            <TextBlock Text="DiscordicXP" FontSize="32" FontWeight="SemiBold" Foreground="{StaticResource Gold}"/>
             <TextBlock Text="Обновления и прогресс WoW Forever" Margin="0,2,0,24" Foreground="#BDB6AD"/>
             <Border Background="#252126" Padding="12" CornerRadius="6" Margin="0,0,0,18">
                 <StackPanel>
@@ -19,7 +19,7 @@
                     <Button x:Name="LauncherUpdateButton" Content="Обновить и перезапустить" Margin="0,10,0,0" Visibility="Collapsed" Click="LauncherUpdate_Click"/>
                 </StackPanel>
             </Border>
-            <TextBlock Text="Сервер DiscordikXP" Margin="0,0,0,6"/>
+            <TextBlock Text="Сервер DiscordicXP" Margin="0,0,0,6"/>
             <TextBox x:Name="ServerBox" AutomationProperties.Name="Сервер обновлений"/>
             <TextBlock Text="Ключ этого компьютера" Margin="0,16,0,6"/>
             <PasswordBox x:Name="DeviceKeyBox" AutomationProperties.Name="Ключ компьютера"/>

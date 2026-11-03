@@ -1,6 +1,6 @@
 {
-  "name": "discodicxp-wow-forever",
-  "version": "0.5.2",
+  "name": "discordicxp-wow-forever",
+  "version": "0.5.3",
   "private": true,
   "type": "module",
   "scripts": {

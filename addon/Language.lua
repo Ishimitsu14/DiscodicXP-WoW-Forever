@@ -2,7 +2,7 @@ local addonName, addon = ...
 
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 local russianClient = GetLocale() == "ruRU"
-addon.displayName = "DiscordikXP"
+addon.displayName = "DiscordicXP"
 
 if not L["Active Targets"] then L["Active Targets"] = "NPC Selection" end
 if russianClient then
@@ -34,7 +34,7 @@ if russianClient then
     L["Forever — Azeroth"] = "Forever — Азерот"
     L["Cancel import"] = "Отменить импорт"
     L["Close"] = "Закрыть"
-    L["DiscordikXP · Import guides"] = "DiscordikXP · Импорт маршрутов"
+    L["DiscordicXP · Import guides"] = "DiscordicXP · Импорт маршрутов"
     L["Open the .txt file, copy all text and paste it below.\nMatching sections will be updated, keeping your progress."] = "Откройте .txt, скопируйте весь текст и вставьте его в поле ниже.\nСовпадающие разделы будут обновлены с сохранением прогресса."
     L["Original file name (optional)"] = "Имя исходного файла (необязательно)"
     L[".txt contents — click the field and paste with Ctrl+V"] = "Содержимое файла .txt — нажмите на поле и вставьте текст через Ctrl+V"
@@ -76,7 +76,7 @@ if russianClient then
     L["/dxp — settings; /dxp guides — guides; /dxp show — show; /dxp hide — hide; /dxp npc on|off — NPC window; /dxp status — status. Update guides in the launcher, then /reload."] = "/dxp — настройки; /dxp guides — маршруты; /dxp show — показать; /dxp hide — скрыть; /dxp npc on|off — окно НПС; /dxp status — состояние. Обновление гайдов — в лаунчере, затем /reload."
     L["Update guides with the launcher's Update guides button, then /reload."] = "Гайды обновляются кнопкой «Обновить гайды» в лаунчере. После обновления выполните /reload."
     L["Guide selection is available after combat."] = "Выбор маршрута доступен после боя."
-    L["DiscordikXP · Forever · progress sync through the launcher"] = "DiscordikXP · Forever · синхронизация прогресса через лаунчер"
+    L["DiscordicXP · Forever · progress sync through the launcher"] = "DiscordicXP · Forever · синхронизация прогресса через лаунчер"
     L["Guide: %s; step: %s"] = "Маршрут: %s; шаг: %s"
     L["not selected"] = "не выбран"
     L["Usage: /dxp npc on|off"] = "Используйте: /dxp npc on|off"

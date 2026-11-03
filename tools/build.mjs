@@ -70,7 +70,7 @@ end
     text = replaceOnce(text, 'addon.base = {66,78,71,101,116,73,110,102,111}', '', 'обфусцированное имя API');
   }
   if (path === 'Communications.lua') {
-    text = replaceOnce(text, 'f:SetTitle("RestedXP: " .. title)', 'f:SetTitle("DiscordikXP: " .. title)', 'название окна сообщений');
+    text = replaceOnce(text, 'f:SetTitle("RestedXP: " .. title)', 'f:SetTitle("DiscordicXP: " .. title)', 'название окна сообщений');
     text = replaceOnce(text, `    -- Update Feedback Report into GuideWindow context menu, load order workaround
     for i, m in ipairs(addon.RXPFrame.bottomMenu) do
         if m.text == L("Give Feedback for step") then
@@ -86,7 +86,7 @@ end
     text = text.slice(0, start) + text.slice(end);
   }
   if (path === 'SettingsPanel.lua') {
-    text = replaceOnce(text, '        label = addonName,', '        label = "DiscordikXP",', 'название на миникарте');
+    text = replaceOnce(text, '        label = addonName,', '        label = "DiscordicXP",', 'название на миникарте');
     text = replaceOnce(text, `                        order = 3.10,
                         set = function(info, value)
                             SetProfileOption(info, value)
@@ -266,7 +266,7 @@ local NPCNameTooltip = CreateFrame("GameTooltip", "RXPNPCNameTooltip", UIParent,
 -- Only display text is branded; guide keys and SavedVariables keep their identity.
 addon.locale.Get = function(text)
     local translated = getForeign(text)
-    if type(translated) == "string" then return (translated:gsub("DiscodicXP", "DiscordikXP")) end
+    if type(translated) == "string" then return (translated:gsub("DiscodicXP", "DiscordicXP")) end
     return translated
 end
 ` + text.slice(end);
@@ -407,11 +407,11 @@ export async function build({ source, starterSource = source, output = resolve(p
   tocEntries.splice(tocEntries.indexOf('functions.lua') + 1, 0, 'Discodic/NameKnowledge.lua', 'Discodic/NameResolver.lua');
   tocEntries.push(...starterEntries.map(rebrand), 'Discodic/GuideUpdates.lua', 'UserGuides/ForeverHorde.lua', 'Discodic/SyncIdentity.lua', 'Discodic/Preferences.lua', 'Discodic/Commands.lua');
   const toc = `## Interface: 16001
-## Title: DiscordikXP |cffe0bd7aForever|r
+## Title: DiscordicXP |cffe0bd7aForever|r
 ## Notes: WoW Forever leveling guides. Interface follows the client language.
 ## Notes-ruRU: Маршруты прокачки WoW Forever. Интерфейс под язык клиента.
-## Author: DiscordikXP
-## Version: 0.5.2
+## Author: DiscordicXP
+## Version: 0.5.3
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -424,7 +424,7 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', displayName: 'DiscordikXP', version: '0.5.2', interface: 16001, guideUpdates: 1,
+    addon: 'DiscodicXP', displayName: 'DiscordicXP', version: '0.5.3', interface: 16001, guideUpdates: 1,
     engine: 'RestedXP v4.11.23', guides: 0,
     starterGuides, starterSource: `RestedXP ${starterVersion}`,
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),
