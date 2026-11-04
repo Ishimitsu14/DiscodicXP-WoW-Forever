@@ -233,6 +233,7 @@ test('UI follows the client language and unknown locales fall back to English', 
         assert(addon.locale.Get("DiscordicXP · Import guides") == (russian and "DiscordicXP · Импорт маршрутов" or "DiscordicXP · Import guides"))
         assert(addon.locale.Get("Finish combat and try importing again.") == (russian and "Завершите бой и повторите импорт." or "Finish combat and try importing again."))
         assert(addon.locale.Get("Hide NPC Selection window") == (russian and "Скрыть окно выбора НПС" or "Hide NPC Selection window"))
+        assert(addon.locale.Get("Enable Standby Mode") == (russian and "Приостанавливать скрытый аддон" or "Enable Standby Mode"))
         if russian then
             assert(L["Browse Guides"] == "Выбрать маршрут")
             assert(addon.locale.Get("Active Targets") == "Выбор NPC")

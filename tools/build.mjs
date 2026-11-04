@@ -24,6 +24,91 @@ function replaceOnce(text, before, after, label) {
 
 export function patchSource(path, source) {
   let text = source.replaceAll('\r\n', '\n');
+  if (path === 'RXPGuides.lua') {
+    text = replaceOnce(text, '    name = UnitName("player"),',
+      '    name = addon.game == "FOREVER" and table.concat({UnitName("player")}, " ") or UnitName("player"),',
+      'полное имя персонажа Forever');
+    text = replaceOnce(text, 'or _G.SkillLineInfo', 'or _G.GetSkillLineInfo', 'API профессий');
+    text = replaceOnce(text, 'local trainerUpdate = 0', 'local trainerUpdate = 0\nlocal trainerProcessTime', 'таймер автообучения');
+    const start = text.indexOf('local function ProcessSpells(names, rank)\n');
+    const end = text.indexOf('local function OnTrainer()\n', start);
+    if (start < 0 || end < start) throw new Error('Не найдена функция автообучения.');
+    text = text.slice(0, start) + `local function ProcessSpells(names, rank)
+    local now = GetTime()
+    if gameVersion > 90000 or not addon.defaultSpellList or trainerProcessTime == now then return end
+    trainerProcessTime = now
+
+    local forever = addon.game == "FOREVER"
+    if forever and ClassTrainerFrame and ClassTrainerFrame.TitleContainer and ClassTrainerFrame.TitleContainer.TitleText:GetText() == UnitName("pet") then
+        return
+    end
+
+    local playerLevelMax = GetEffectivePlayerMaxLevel and GetEffectivePlayerMaxLevel() or 90
+    local _, race = UnitRace("player")
+    local level = UnitLevel("player")
+    local entries = {race, addon.player.class}
+    local hcserver = C_GameRules and C_GameRules.IsHardcoreActive and C_GameRules.IsHardcoreActive()
+    local spellsToBuy = {}
+    for _, entry in pairs(entries) do
+        if addon.defaultSpellList[entry] then
+            for spellLvl = 1, playerLevelMax do
+                local spells = addon.defaultSpellList[entry][spellLvl]
+                if spells and spellLvl <= level then
+                    for _, spellId in ipairs(spells) do
+                        if not (spellRequest[spellId] or C_Spell.IsSpellDataCached(spellId)) then
+                            C_Spell.RequestLoadSpellData(spellId)
+                            spellRequest[spellId] = true
+                        end
+                        if names and rank and
+                            not (hcserver and addon.HCSpellList and addon.HCSpellList[spellId]) then
+                            spellRequest[spellId] = nil
+                            local sName = GetSpellInfo(spellId)
+                            local sRank = GetSpellSubtext(spellId)
+                            for id, name in pairs(names) do
+                                if sName == name and sRank == rank[id] then
+                                    table.insert(spellsToBuy, id)
+                                end
+                            end
+                        end
+                    end
+                    if next(spellsToBuy) then break end
+                end
+            end
+        end
+    end
+
+    table.sort(spellsToBuy)
+    local lastId
+    local start, finish, step = 1, #spellsToBuy, 1
+    if forever then
+        -- Buying from the end preserves trainer indices when the list shrinks.
+        start, finish, step = #spellsToBuy, 1, -1
+    end
+    for i = start, finish, step do
+        local id = spellsToBuy[i]
+        if id ~= lastId then BuyTrainerService(id) end
+        lastId = id
+    end
+end
+
+` + text.slice(end);
+    text = replaceOnce(text, `function addon.LegacyUpdateLoop()
+    -- NewTicker calls function every updateFrequency, making diff/updateTick/tickRate logic obsolete
+`, `function addon.LegacyUpdateLoop()
+    -- NewTicker calls function every updateFrequency, making diff/updateTick/tickRate logic obsolete
+    local profile = addon.settings.profile
+    if profile.standbyMode and not profile.showEnabled then return end
+
+`, 'паузу скрытого маршрута');
+  }
+  if (path === 'LevelingTracker.lua') {
+    text = replaceOnce(text, 'local playerName = UnitName("player")', 'local playerName = addon.player.name', 'имя в трекере прокачки');
+  }
+  if (path === 'QuestLog.lua') {
+    text = replaceOnce(text, '            local group = list.defaultGroup_', `            if not list and guide.group then list = addon.guideList["*" .. guide.group] end
+            list = list or {}
+            local group = list.defaultGroup_`, 'журнал отсутствующей группы маршрутов');
+  }
   if (path === 'GuideLoader.lua') {
     const start = text.indexOf('local importChunkSize = 4096\n');
     const end = text.indexOf('local function CompressDeflate(str)\n', start);
@@ -86,6 +171,16 @@ end
     text = text.slice(0, start) + text.slice(end);
   }
   if (path === 'SettingsPanel.lua') {
+    text = replaceOnce(text, '        showEnabled = true,', '        showEnabled = true,\n        standbyMode = false,', 'настройку паузы');
+    text = replaceOnce(text, '                    featuresHeader = {\n', `                    standbyMode = {
+                        name = L("Enable Standby Mode"),
+                        desc = L("Pause guide processing when addon is hidden."),
+                        type = "toggle",
+                        width = optionsWidth,
+                        order = 1.4,
+                    },
+                    featuresHeader = {
+`, 'переключатель паузы в общих настройках');
     text = replaceOnce(text, '        label = addonName,', '        label = "DiscordicXP",', 'название на миникарте');
     text = replaceOnce(text, `                        order = 3.10,
                         set = function(info, value)
@@ -141,6 +236,20 @@ end
 `, '', 'форму обратной связи на карте');
   }
   if (path === 'GuideWindow.lua') {
+    text = replaceOnce(text, `    if not useV2GuideWindow then
+        ClearFrameData()
+        addon.v2:ClearActiveStepEventWatchers()
+    end`, `    if useV2GuideWindow then
+        local playerState = addon.v2.state.player[addon.player.name]
+        if playerState and playerState.childContainer then
+            playerState.childContainer:ReleaseChildren()
+            playerState.activeStepItemsByKey = nil
+            playerState.activeStepItems = nil
+        end
+        addon.v2:ClearActiveStepEventWatchers()
+    else
+        ClearFrameData()
+    end`, 'очистку закреплённых целей при смене шага');
     text = replaceOnce(text, `    tinsert(menuList, {
         text = L("Import guide"),
         notCheckable = 1,
@@ -222,6 +331,45 @@ end
         frame:SetClampedToScreen(true)`, 'видимость блока текущих целей на экране');
   }
   if (path === 'functions.lua') {
+    text = replaceOnce(text, '    local event,msg = ...', '    local event,msg,arg2,arg3,arg4,arg5 = ...', 'получателя предмета');
+    text = replaceOnce(text, 'if event == "CHAT_MSG_LOOT" and C_Item and C_Item.GetItemInfo then',
+      'if event == "CHAT_MSG_LOOT" and C_Item and C_Item.GetItemInfo and arg5 == addon.player.name then',
+      'учёт только собственного лута');
+    text = text.replaceAll(`            local questId = tonumber(v)
+            if questId then
+                ids[i] = GetQuestId(questId)
+                addon.InsertQuestGuide(ids[i],addon.pickUpList)
+            else
+                err = true
+                break
+            end`, `            local questId = tonumber(v)
+            questId = questId and GetQuestId(questId)
+            if not questId then
+                err = true
+                break
+            end
+            ids[i] = questId
+            addon.InsertQuestGuide(questId,addon.pickUpList)`);
+    text = replaceOnce(text, '        if RXPCData.skipDailies and element.tag == "daily" then',
+      '        if not (element and element.ids) then return end\n        if RXPCData.skipDailies and element.tag == "daily" then',
+      'проверку данных ежедневного задания');
+    text = replaceOnce(text, '    if RXPCData.skipDailies and element.tag == "dailyturnin" then',
+      '    if not (element and element.ids) then return end\n    if RXPCData.skipDailies and element.tag == "dailyturnin" then',
+      'проверку данных сдачи ежедневного задания');
+    text = replaceOnce(text, '        local id = GetQuestId(element.questId,nil,true)\n',
+      '        local id = GetQuestId(element.questId,nil,true)\n        if not id then return end\n', 'проверку ID сдаваемого задания');
+    text = replaceOnce(text, 'if not addon.IsSecretValue(arStart) and not addon.IsSecretValue(arDuration) then',
+      'if arStart and arDuration and not addon.IsSecretValue(arStart) and not addon.IsSecretValue(arDuration) then',
+      'пустой откат Astral Recall');
+    text = replaceOnce(text, '                stat = GetInventoryItemQuality("player", element.slot)', `                stat = GetInventoryItemQuality and GetInventoryItemQuality("player", element.slot)
+                if not stat then
+                    local itemID = GetInventoryItemID("player", element.slot)
+                    if itemID then
+                        _, _, stat = GetItemInfo(itemID)
+                    end
+                end`, 'совместимость API качества предмета');
+    text = replaceOnce(text, 'not element.found andL"Step skipped: Quest is not being offered"',
+      'not element.found and L("Step skipped: Quest is not being offered")', 'сообщение пропущенного задания');
     text = replaceOnce(text, 'local NPCNames = {}', `local NPCNames = {}
 local NPCNameTooltip = CreateFrame("GameTooltip", "RXPNPCNameTooltip", UIParent, "GameTooltipTemplate")`, 'скрытую подсказку поиска NPC');
     const start = text.indexOf('function addon.GetNpcName(id)\n');
@@ -411,7 +559,7 @@ export async function build({ source, starterSource = source, output = resolve(p
 ## Notes: WoW Forever leveling guides. Interface follows the client language.
 ## Notes-ruRU: Маршруты прокачки WoW Forever. Интерфейс под язык клиента.
 ## Author: DiscordicXP
-## Version: 0.5.3
+## Version: 0.5.4
 ## Category: Quests
 ## Category-ruRU: Задания
 ## OptionalDeps: Questie
@@ -424,8 +572,8 @@ ${tocEntries.join('\n')}
   await writeFile(resolve(output, 'LICENSE'), await readFile(resolve(source, 'LICENSE')));
   await writeFile(resolve(output, 'NOTICE.txt'), await readFile(resolve(projectRoot, 'NOTICE.txt')));
   const manifest = {
-    addon: 'DiscodicXP', displayName: 'DiscordicXP', version: '0.5.3', interface: 16001, guideUpdates: 1,
-    engine: 'RestedXP v4.11.23', guides: 0,
+    addon: 'DiscodicXP', displayName: 'DiscordicXP', version: '0.5.4', interface: 16001, guideUpdates: 1,
+    engine: 'RestedXP v4.11.23', engineFixes: 'RestedXP v4.11.32', guides: 0,
     starterGuides, starterSource: `RestedXP ${starterVersion}`,
     guideDigest: createHash('sha256').update(guideSource).digest('hex'),
     runtimeAccountBinding: false,

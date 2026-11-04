@@ -5,7 +5,11 @@ local russianClient = GetLocale() == "ruRU"
 addon.displayName = "DiscordicXP"
 
 if not L["Active Targets"] then L["Active Targets"] = "NPC Selection" end
+L["Enable Standby Mode"] = "Enable Standby Mode"
+L["Pause guide processing when addon is hidden."] = "Pause guide processing when addon is hidden."
 if russianClient then
+    L["Enable Standby Mode"] = "Приостанавливать скрытый аддон"
+    L["Pause guide processing when addon is hidden."] = "Приостанавливать обработку маршрута, когда аддон скрыт. После показа обработка продолжится."
     L["Browse Guides"] = "Выбрать маршрут"
     L["Open Settings"] = "Настройки"
     L["Import Guides"] = "Локальные гайды"

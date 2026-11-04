@@ -1,6 +1,7 @@
-DiscordicXP for WoW Forever, version 0.5.2
+DiscordicXP for WoW Forever, version 0.5.4
 
 This is a local derivative of RestedXP Guides v4.11.23 by RestedXP.
+Selected engine fixes are backported from RestedXP Guides v4.11.32.
 The original engine is licensed under Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International.
 The complete upstream license is included as LICENSE in each build.
